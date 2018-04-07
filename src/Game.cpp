@@ -7,96 +7,96 @@
 
 void SDLErrorExit(const std::string &_msg)
 {
-    std::cerr<<_msg<<"\n";
-    std::cerr<<SDL_GetError()<<"\n";
-    SDL_Quit();
-    exit(EXIT_FAILURE);
+  std::cerr<<_msg<<"\n";
+  std::cerr<<SDL_GetError()<<"\n";
+  SDL_Quit();
+  exit(EXIT_FAILURE);
 }
 
 void PlayGame(SDL_Window *window, SDL_Rect rect, bool quit)
 {
-    // Create our opengl context and attach it to our window
-    SDL_GLContext glContext=createOpenGLContext(window);
-    if(!glContext)
+  // Create our opengl context and attach it to our window
+  SDL_GLContext glContext=createOpenGLContext(window);
+  if(!glContext)
+  {
+    SDLErrorExit("Problem creating OpenGL context");
+  }
+  // make this our current GL context (we can have more than one window but in this case not)
+  SDL_GL_MakeCurrent(window, glContext);
+  /* This makes our buffer swap syncronized with the monitor's vertical refresh */
+  SDL_GL_SetSwapInterval(1);
+  // we need to initialise the NGL lib which will load all of the OpenGL functions, this must
+  // be done once we have a valid GL context but before we call any GL commands. If we dont do
+  // this everything will crash
+  ngl::NGLInit::instance();
+  // now clear the screen and swap whilst NGL inits (which may take time)
+  glClear(GL_COLOR_BUFFER_BIT);
+  SDL_GL_SwapWindow(window);
+
+  // flag to indicate if we need to exit
+  bool back=false;
+  // sdl event processing data structure
+  SDL_Event event;
+  // now we create an instance of our ngl class, this will init NGL and setup basic
+  // opengl stuff ext. When this falls out of scope the dtor will be called and cleanup
+  // our gl stuff
+  NGLDraw ngl;
+  // resize the ngl to set the screen size and camera stuff
+  ngl.resize(rect.w,rect.h);
+  while(!back)
+  {
+
+    while ( SDL_PollEvent(&event) )
     {
-      SDLErrorExit("Problem creating OpenGL context");
-    }
-    // make this our current GL context (we can have more than one window but in this case not)
-    SDL_GL_MakeCurrent(window, glContext);
-    /* This makes our buffer swap syncronized with the monitor's vertical refresh */
-    SDL_GL_SetSwapInterval(1);
-    // we need to initialise the NGL lib which will load all of the OpenGL functions, this must
-    // be done once we have a valid GL context but before we call any GL commands. If we dont do
-    // this everything will crash
-    ngl::NGLInit::instance();
-    // now clear the screen and swap whilst NGL inits (which may take time)
-    glClear(GL_COLOR_BUFFER_BIT);
+      switch (event.type)
+      {
+        // this is the window x being clicked.
+        case SDL_QUIT : quit = true; back = true; break;
+        // process the mouse data by passing it to ngl class
+        case SDL_MOUSEMOTION : ngl.mouseMoveEvent(event.motion); break;
+        case SDL_MOUSEBUTTONDOWN : ngl.mousePressEvent(event.button); break;
+        case SDL_MOUSEBUTTONUP : ngl.mouseReleaseEvent(event.button); break;
+        case SDL_MOUSEWHEEL : ngl.wheelEvent(event.wheel);
+        // if the window is re-sized pass it to the ngl class to change gl viewport
+        // note this is slow as the context is re-create by SDL each time
+        case SDL_WINDOWEVENT :
+          int w,h;
+          // get the new window size
+          SDL_GetWindowSize(window,&w,&h);
+          ngl.resize(w,h);
+        break;
+
+        // now we look for a keydown event
+        case SDL_KEYDOWN:
+        {
+          ngl.keyEvent(event.key);
+          switch( event.key.keysym.sym )
+          {
+            // if it's the escape key quit
+            case SDLK_ESCAPE :  back = true; break;
+            case SDLK_w : glPolygonMode(GL_FRONT_AND_BACK,GL_LINE); break;
+            case SDLK_s : glPolygonMode(GL_FRONT_AND_BACK,GL_FILL); break;
+            case SDLK_f :
+              SDL_SetWindowFullscreen(window,SDL_TRUE);
+              glViewport(0,0,rect.w,rect.h);
+            break;
+
+            case SDLK_g : SDL_SetWindowFullscreen(window,SDL_FALSE); break;
+            default : break;
+          } // end of key process
+        } // end of keydown
+
+        default : break;
+      } // end of event switch
+    } // end of poll events
+
+    // now we draw ngl
+    ngl.update();
+    ngl.draw();
+    // swap the buffers
     SDL_GL_SwapWindow(window);
 
-    // flag to indicate if we need to exit
-    bool back=false;
-    // sdl event processing data structure
-    SDL_Event event;
-    // now we create an instance of our ngl class, this will init NGL and setup basic
-    // opengl stuff ext. When this falls out of scope the dtor will be called and cleanup
-    // our gl stuff
-    NGLDraw ngl;
-    // resize the ngl to set the screen size and camera stuff
-    ngl.resize(rect.w,rect.h);
-    while(!back)
-    {
-
-      while ( SDL_PollEvent(&event) )
-      {
-        switch (event.type)
-        {
-          // this is the window x being clicked.
-          case SDL_QUIT : quit = true; back = true; break;
-          // process the mouse data by passing it to ngl class
-          case SDL_MOUSEMOTION : ngl.mouseMoveEvent(event.motion); break;
-          case SDL_MOUSEBUTTONDOWN : ngl.mousePressEvent(event.button); break;
-          case SDL_MOUSEBUTTONUP : ngl.mouseReleaseEvent(event.button); break;
-          case SDL_MOUSEWHEEL : ngl.wheelEvent(event.wheel);
-          // if the window is re-sized pass it to the ngl class to change gl viewport
-          // note this is slow as the context is re-create by SDL each time
-          case SDL_WINDOWEVENT :
-            int w,h;
-            // get the new window size
-            SDL_GetWindowSize(window,&w,&h);
-            ngl.resize(w,h);
-          break;
-
-          // now we look for a keydown event
-          case SDL_KEYDOWN:
-          {
-            ngl.keyEvent(event.key);
-            switch( event.key.keysym.sym )
-            {
-              // if it's the escape key quit
-              case SDLK_ESCAPE :  back = true; break;
-              case SDLK_w : glPolygonMode(GL_FRONT_AND_BACK,GL_LINE); break;
-              case SDLK_s : glPolygonMode(GL_FRONT_AND_BACK,GL_FILL); break;
-              case SDLK_f :
-                SDL_SetWindowFullscreen(window,SDL_TRUE);
-                glViewport(0,0,rect.w,rect.h);
-              break;
-
-              case SDLK_g : SDL_SetWindowFullscreen(window,SDL_FALSE); break;
-              default : break;
-            } // end of key process
-          } // end of keydown
-
-          default : break;
-        } // end of event switch
-      } // end of poll events
-
-      // now we draw ngl
-      ngl.update();
-      ngl.draw();
-      // swap the buffers
-      SDL_GL_SwapWindow(window);
-
-    }
+  }
 }
 
 SDL_GLContext createOpenGLContext(SDL_Window *window)

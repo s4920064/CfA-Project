@@ -7,21 +7,21 @@
 
 Button::Button(const char *label, SDL_Renderer *renderer)
 {
-    //set textFont
-    textFont = TTF_OpenFont("game_over.ttf",70);
-    //set buttonSpacing
-    buttonSpacing = 0;
+  //set textFont
+  textFont = TTF_OpenFont("game_over.ttf",70);
+  //set buttonSpacing
+  buttonSpacing = 0;
 
-    //set parameters for textRect
-    textRect.x = buttonSpacing;
-    textRect.y = buttonSpacing;
-    TTF_SizeText(textFont,"hello",&textRect.w,&textRect.h);
+  //set parameters for textRect
+  textRect.x = buttonSpacing;
+  textRect.y = buttonSpacing;
+  TTF_SizeText(textFont,"hello",&textRect.w,&textRect.h);
 
-    //set parameters for borderRect
-    borderRect.w =textRect.w+buttonSpacing*2;
-    borderRect.h = textRect.h+buttonSpacing*2;
-    borderRect.x = 0;
-    borderRect.y = 0;
+  //set parameters for borderRect
+  borderRect.w =textRect.w+buttonSpacing*2;
+  borderRect.h = textRect.h+buttonSpacing*2;
+  borderRect.x = 0;
+  borderRect.y = 0;
 
     //create buttonSurface to fill rect
  // buttonSurface = SDL_CreateRGBSurface(0, borderRect.w, borderRect.h, 32,0,0,0,0);
