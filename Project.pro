@@ -4,8 +4,8 @@ QT -=xml
 # as I want to support 4.8 and 5 this will set a flag for some of the mac stuff
 # mainly in the types.h file for the setMacVisual which is native in Qt5
 isEqual(QT_MAJOR_VERSION, 5) {
-		cache()
-		DEFINES +=QT5BUILD
+    cache()
+    DEFINES +=QT5BUILD
 }
 TARGET=SDLNGL
 CONFIG-=app_bundle
@@ -41,20 +41,19 @@ macx:LIBS+= -framework OpenGL
 macx:DEFINES+=DARWIN
 # now if we are under unix and not on a Mac (i.e. linux) define GLEW
 linux-*{
-		linux-*:QMAKE_CXXFLAGS +=  -march=native
-		linux-*:DEFINES+=GL42
-		DEFINES += LINUX
+    linux-*:QMAKE_CXXFLAGS +=  -march=native
+    linux-*:DEFINES+=GL42
+    DEFINES += LINUX
 }
 
 win32: {
-				PRE_TARGETDEPS+=C:/NGL/lib/NGL.lib
-				INCLUDEPATH+=-I c:/boost
-				DEFINES+=GL42
-				DEFINES += WIN32
-				DEFINES+=_WIN32
-				DEFINES+=_USE_MATH_DEFINES
-				LIBS += -LC:/NGL/lib/ -lNGL
-				DEFINES+=NO_DLL
+        PRE_TARGETDEPS+=C:/NGL/lib/NGL.lib
+        INCLUDEPATH+=-I c:/boost
+        DEFINES+=GL42
+        DEFINES += WIN32
+        DEFINES+=_WIN32
+        DEFINES+=_USE_MATH_DEFINES
+        LIBS += -LC:/NGL/lib/ -lNGL
+        DEFINES+=NO_DLL
 }
-
 
