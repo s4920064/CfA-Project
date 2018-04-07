@@ -46,23 +46,29 @@ int main( int argc, char* args[] )
   // create the UI renderer
   Menu UI(window, rect);
 
-  // create buttons for main menu
+  // ~~~Create Main Menu buttons~~~
+  // ***CONCERN*** should these be under Menu::MainMenu()? or would
+  //               calling that function and initializing the button
+  //               class every time the main loop loops be bad for performance?
   Button playButton( "PLAY", UI.m_Renderer);
-
-  //set the playButton's position (centered based on button dimensions)
+  // set the playButton's position (centered based on button dimensions)
   playButton.setPosition(rect.w/4, rect.h/4, true);
-
-  const SDL_Rect Rect = playButton.borderRect;
-  std::cout<<UI.m_winHeight<<"   "<<rect.h;
+  //~~~
 
   // while the program is running
   while(!quit)
   {
-    //display main menu
+    // ~~~Display Main Menu~~~
+    // set background color to grey
     SDL_SetRenderDrawColor(UI.m_Renderer, 112, 112, 112, 225);
     SDL_RenderClear(UI.m_Renderer);
+    // render playButton
     UI.MainMenu(playButton);
+    // update screen
     SDL_RenderPresent(UI.m_Renderer);
+    // ~~~~~~~~~~~~~~~~~~~~~~~
+
+    // while there is an event
     while(SDL_PollEvent(&event))
     {
       switch( event.type )
@@ -73,7 +79,7 @@ int main( int argc, char* args[] )
         //if a mouse button was pressed
         case SDL_MOUSEBUTTONUP:
         {
-
+          // if the button was the left mouse button
           if( event.button.button == SDL_BUTTON_LEFT)
           {
             //get mouse position offsets
