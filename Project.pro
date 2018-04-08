@@ -7,7 +7,7 @@ isEqual(QT_MAJOR_VERSION, 5) {
     cache()
     DEFINES +=QT5BUILD
 }
-TARGET=SDLNGL
+TARGET=Project
 CONFIG-=app_bundle
 DESTDIR=./
 OBJECTS_DIR=obj

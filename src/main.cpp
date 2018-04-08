@@ -68,7 +68,7 @@ int main( int argc, char* args[] )
     SDL_RenderPresent(UI.m_Renderer);
     // ~~~~~~~~~~~~~~~~~~~~~~~
 
-    // while there is an event
+    // while there is an event??
     while(SDL_PollEvent(&event))
     {
       switch( event.type )
@@ -93,7 +93,8 @@ int main( int argc, char* args[] )
               SDL_RenderClear(UI.m_Renderer);
 
               //open game screen and start game loop
-              UI.Game(rect, quit);
+              UI.Game();
+              PlayGame(window, rect, &quit);
             }
           }
         }

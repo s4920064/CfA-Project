@@ -13,7 +13,7 @@ void SDLErrorExit(const std::string &_msg)
   exit(EXIT_FAILURE);
 }
 
-void PlayGame(SDL_Window *window, SDL_Rect rect, bool quit)
+void PlayGame(SDL_Window *window, SDL_Rect rect, bool *quit)
 {
   // Create our opengl context and attach it to our window
   SDL_GLContext glContext=createOpenGLContext(window);
@@ -45,13 +45,12 @@ void PlayGame(SDL_Window *window, SDL_Rect rect, bool quit)
   ngl.resize(rect.w,rect.h);
   while(!back)
   {
-
     while ( SDL_PollEvent(&event) )
     {
       switch (event.type)
       {
         // this is the window x being clicked.
-        case SDL_QUIT : quit = true; back = true; break;
+        case SDL_QUIT : *quit = true; back = true; break;
         // process the mouse data by passing it to ngl class
         case SDL_MOUSEMOTION : ngl.mouseMoveEvent(event.motion); break;
         case SDL_MOUSEBUTTONDOWN : ngl.mousePressEvent(event.button); break;

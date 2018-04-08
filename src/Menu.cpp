@@ -28,15 +28,15 @@ Button::Button(const char *label, SDL_Renderer *renderer)
   //render text on textSurface
   textSurface = TTF_RenderText_Solid(textFont,label, textColor);
 
-  //convert the buttonSurface to a texture
+  //convert the textSurface to a texture
   buttonTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-  SDL_FreeSurface(textSurface);     //free the no longer needed buttonSurface
+  SDL_FreeSurface(textSurface);     //free the no longer needed textSurface
 
 }
 
 Button::~Button()
 {
-  m_functPtr = NULL;
+  //m_functPtr = NULL;
 }
 
 bool Button::setPosition(int _x, int _y, bool centered)
@@ -79,7 +79,6 @@ Menu::Menu(SDL_Window* window, SDL_Rect rect)
   m_Renderer = SDL_CreateRenderer(window, -1, 0);
   m_winWidth = rect.w/2;
   m_winHeight = rect.h/2;
-
 }
 
 Menu::~Menu()
@@ -120,13 +119,10 @@ void Menu::HighScores()
 
 }
 
-void Menu::Game(SDL_Rect rect, bool quit)
+void Menu::Game()
 {
   //clear screen
   SDL_RenderClear(m_Renderer);
-
-  //start game loop
-  PlayGame(m_window, rect, quit);
 }
 
 

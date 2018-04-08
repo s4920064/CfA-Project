@@ -52,7 +52,6 @@ void NGLDraw::draw()
   //pos+=dir;
   m_view=ngl::lookAt(pos,m_car->getPos(),ngl::Vec3(0,1,0));
 
-
   loadMatricesToShader();
   ngl::VAOPrimitives::instance()->draw("grid");
   m_car->draw();
