@@ -3,6 +3,7 @@
 
 #include <ngl/Camera.h>
 #include <ngl/Light.h>
+#include <ngl/ShaderLib.h>
 #include <SDL.h>
 #include "Car.h"
 
@@ -61,10 +62,15 @@ class NGLDraw
     /// @brief method to load transform data to the shaders
     //----------------------------------------------------------------------------------------------------------------------
     void loadMatricesToShader();
-    ngl::Mat4 m_view;
 
+    ngl::Mat4 m_view;
     ngl::Mat4 m_projection;
+
+    // the car
     Car *m_car;
+
+    // the shader
+    ngl::ShaderLib *shader;
 
 };
 

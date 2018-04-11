@@ -4,8 +4,10 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
+Button::Button()
+{}
 
-Button::Button(const char *label, SDL_Renderer *renderer)
+Button::Button(const char *_label, SDL_Renderer *_renderer)
 {
   //set textFont
   textFont = TTF_OpenFont("game_over.ttf",70);
@@ -18,7 +20,7 @@ Button::Button(const char *label, SDL_Renderer *renderer)
   TTF_SizeText(textFont,"hello",&textRect.w,&textRect.h);
 
   //set parameters for borderRect
-  borderRect.w =textRect.w+buttonSpacing*2;
+  borderRect.w = textRect.w+buttonSpacing*2;
   borderRect.h = textRect.h+buttonSpacing*2;
   borderRect.x = 0;
   borderRect.y = 0;
@@ -26,10 +28,10 @@ Button::Button(const char *label, SDL_Renderer *renderer)
   //set textColor
   textColor = {225,128,0,225};
   //render text on textSurface
-  textSurface = TTF_RenderText_Solid(textFont,label, textColor);
+  textSurface = TTF_RenderText_Solid(textFont,_label, textColor);
 
   //convert the textSurface to a texture
-  buttonTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+  buttonTexture = SDL_CreateTextureFromSurface(_renderer, textSurface);
   SDL_FreeSurface(textSurface);     //free the no longer needed textSurface
 
 }
@@ -39,30 +41,27 @@ Button::~Button()
   //m_functPtr = NULL;
 }
 
-bool Button::setPosition(int _x, int _y, bool centered)
+void Button::setPosition(int _x, int _y, bool _centered)
 {
-  if( centered )
+  if( _centered )
   {
     borderRect.x = _x-(borderRect.w/2);
     borderRect.y = _y-(borderRect.h/2);
-    return true;
   }
   else
   {
     borderRect.x = _x;
     borderRect.y = _y;
-    return true;
   }
-  return false;
 }
 
-bool Button::isInside(int mouseX, int mouseY)
+bool Button::isInside(int _mouseX, int _mouseY)
 {
   //If the mouse is over the button. End reference.
-  if(     ( mouseX > borderRect.x )
-       && ( mouseX < borderRect.x + borderRect.w )
-       && ( mouseY > borderRect.y )
-       && ( mouseY < borderRect.y + borderRect.h )
+  if(     ( _mouseX > borderRect.x )
+       && ( _mouseX < borderRect.x + borderRect.w )
+       && ( _mouseY > borderRect.y )
+       && ( _mouseY < borderRect.y + borderRect.h )
      )
   {
     return true;
@@ -73,56 +72,53 @@ bool Button::isInside(int mouseX, int mouseY)
 
 
 
-
-Menu::Menu(SDL_Window* window, SDL_Rect rect)
+MainMenu::MainMenu(SDL_Renderer *_renderer, SDL_Rect _windowRect)
 {
-  m_Renderer = SDL_CreateRenderer(window, -1, 0);
-  m_winWidth = rect.w/2;
-  m_winHeight = rect.h/2;
+  m_playButton = Button("PLAY", _renderer);
+  m_playButton.setPosition(_windowRect.w/2, _windowRect.h/2, true);
 }
 
-Menu::~Menu()
+MainMenu::~MainMenu()
 {
-  SDL_DestroyTexture(UITexture);
+  std::cout<<"Exiting Program\n";
 }
 
-// render Main Menu
-void Menu::MainMenu(Button playButton)
+void MainMenu::render(SDL_Renderer *_renderer)
 {
-  // ~~~render playButton~~~
-  // set playButton fill color to orange
-  SDL_SetRenderDrawColor(m_Renderer,120,50,50,255);
+  // set background color
+  SDL_SetRenderDrawColor(_renderer,
+                         m_backColor.r,
+                         m_backColor.g,
+                         m_backColor.b,
+                         m_backColor.a);
+  SDL_RenderClear(_renderer);
+
+  // render playButton------------------------
   // turn playButton.borderRect into a const SDL_Rect for the SDL_RenderFillRect() function
-  const SDL_Rect Rect = playButton.borderRect;
-  SDL_RenderFillRect(m_Renderer, &Rect);
+  const SDL_Rect playRect = m_playButton.borderRect;
+  // fill button shape
+  SDL_SetRenderDrawColor(_renderer,
+                         m_buttonColor.r,
+                         m_buttonColor.g,
+                         m_buttonColor.b,
+                         m_buttonColor.a);
+  SDL_RenderFillRect(_renderer, &playRect);
   // render the playButton text over top of the button color
-  SDL_RenderCopy(m_Renderer,playButton.buttonTexture,NULL,&playButton.borderRect);
-  //~~~~~~~~~~~~~~~~~~~~~~~~
+  SDL_RenderCopy(_renderer,
+                 m_playButton.buttonTexture,
+                 NULL,
+                 &m_playButton.borderRect);
+  // ------------------------------------------
 
+  // render instructionsButton-----------------
+  //const SDL_Rect instrRect = m_instructButton.borderRect;
 
-  // ~~render instructionsButton~~
+  // ------------------------------------------
 
-  // ~~render highscoresButton~~
+  // render highscoresButton-------------------
+  // ------------------------------------------
 
+  // update screen
+  SDL_RenderPresent(_renderer);
 }
-
-void Menu::Instructions(Button backButton)
-{
-  //clear screen
-  SDL_RenderClear(m_Renderer);
-  //set the backButton's position
-  backButton.setPosition(30, m_winHeight-60, false);
-}
-
-void Menu::HighScores()
-{
-
-}
-
-void Menu::Game()
-{
-  //clear screen
-  SDL_RenderClear(m_Renderer);
-}
-
 

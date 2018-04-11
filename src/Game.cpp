@@ -5,6 +5,7 @@
 #include "NGLDraw.h"
 #include <ngl/NGLInit.h>
 
+//FUNCTION FROM JON MACEY
 void SDLErrorExit(const std::string &_msg)
 {
   std::cerr<<_msg<<"\n";
@@ -13,8 +14,9 @@ void SDLErrorExit(const std::string &_msg)
   exit(EXIT_FAILURE);
 }
 
-void PlayGame(SDL_Window *window, SDL_Rect rect, bool *quit)
+void PlayGame(SDL_Window *window, SDL_Rect screenRect, bool *quit)
 {
+  //CODE FROM JON MACEY (STARTS HERE)
   // Create our opengl context and attach it to our window
   SDL_GLContext glContext=createOpenGLContext(window);
   if(!glContext)
@@ -42,7 +44,7 @@ void PlayGame(SDL_Window *window, SDL_Rect rect, bool *quit)
   // our gl stuff
   NGLDraw ngl;
   // resize the ngl to set the screen size and camera stuff
-  ngl.resize(rect.w,rect.h);
+  ngl.resize(screenRect.w,screenRect.h);
   while(!back)
   {
     while ( SDL_PollEvent(&event) )
@@ -77,7 +79,7 @@ void PlayGame(SDL_Window *window, SDL_Rect rect, bool *quit)
             case SDLK_s : glPolygonMode(GL_FRONT_AND_BACK,GL_FILL); break;
             case SDLK_f :
               SDL_SetWindowFullscreen(window,SDL_TRUE);
-              glViewport(0,0,rect.w,rect.h);
+              glViewport(0,0,screenRect.w,screenRect.h);
             break;
 
             case SDLK_g : SDL_SetWindowFullscreen(window,SDL_FALSE); break;
@@ -94,10 +96,13 @@ void PlayGame(SDL_Window *window, SDL_Rect rect, bool *quit)
     ngl.draw();
     // swap the buffers
     SDL_GL_SwapWindow(window);
-
+  std::cout<<"still in loop";
   }
+  // clean up the NGL scene
+  ngl.~NGLDraw();
 }
 
+//FUNCTION FROM JON MACEY
 SDL_GLContext createOpenGLContext(SDL_Window *window)
 {
   // Request an opengl 3.2 context first we setup our attributes, if you need any

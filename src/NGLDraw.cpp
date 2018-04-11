@@ -12,7 +12,7 @@ NGLDraw::NGLDraw()
   glEnable(GL_DEPTH_TEST);
    // now to load the shader and set the values
   // grab an instance of shader manager
-  ngl::ShaderLib *shader=ngl::ShaderLib::instance();
+  shader=ngl::ShaderLib::instance();
   (*shader)["nglDiffuseShader"]->use();
 
   shader->setUniform("Colour",1.0f,1.0f,1.0f,1.0f);
@@ -36,7 +36,6 @@ void NGLDraw::resize(int _w, int _h)
 {
   glViewport(0,0,_w,_h);
   m_projection=ngl::perspective(45,(float)_w/_h,0.05,350);
-
 }
 
 void NGLDraw::draw()

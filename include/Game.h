@@ -8,7 +8,7 @@
 /// @param[in] _msg the error message to send
 void SDLErrorExit(const std::string &_msg);
 
-void PlayGame(SDL_Window *window, SDL_Rect rect, bool *quit);
+void PlayGame(SDL_Window *window, SDL_Rect screenRect, bool *quit);
 
 /// @brief initialize SDL OpenGL context
 SDL_GLContext createOpenGLContext( SDL_Window *window);
