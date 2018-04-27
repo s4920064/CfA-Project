@@ -1,5 +1,5 @@
-#ifndef NGLDRAW_H__
-#define NGLDRAW_H__
+#ifndef GAMEDRAW_H__
+#define GAMEDRAW_H__
 
 #include <ngl/Camera.h>
 #include <ngl/Light.h>

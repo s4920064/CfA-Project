@@ -1,4 +1,4 @@
-#include "NGLDraw.h"
+#include "GameDraw.h"
 #include <ngl/ShaderLib.h>
 #include <ngl/NGLInit.h>
 #include <ngl/Material.h>
@@ -19,11 +19,13 @@ NGLDraw::NGLDraw()
   shader->setUniform("lightPos",1.0f,1.0f,1.0f);
   shader->setUniform("lightDiffuse",1.0f,1.0f,1.0f,1.0f);
 
-  ngl::Vec3 from(0,5,20);
+  ngl::Vec3 from(0,5,10);
   ngl::Vec3 to(0,0,0);
   ngl::Vec3 up(0,1,0);
   m_view=ngl::lookAt(from,to,up);
-  ngl::VAOPrimitives::instance()->createLineGrid("grid",1400,1400,250);
+
+
+  ngl::VAOPrimitives::instance()->createLineGrid("grid",30,30,30);
   m_car = new Car(m_view,m_projection,ngl::Vec3(0.0f,0.0f,0.0f));
 }
 
@@ -35,7 +37,7 @@ NGLDraw::~NGLDraw()
 void NGLDraw::resize(int _w, int _h)
 {
   glViewport(0,0,_w,_h);
-  m_projection=ngl::perspective(45,(float)_w/_h,0.05,350);
+  m_projection=ngl::perspective(45,float(_w)/float(_h),0.05f,350);
 }
 
 void NGLDraw::draw()

@@ -1,7 +1,7 @@
 #include "SDL2/SDL.h"
 #include <cstdlib>
 #include <iostream>
-#include "NGLDraw.h"
+#include "GameDraw.h"
 #include "Menu.h"
 #include "Game.h"
 #include <ngl/NGLInit.h>
@@ -81,7 +81,7 @@ int main( int argc, char* args[] )
             {
               //open game screen and start game loop
               //UI.Game();
-              PlayGame(window, screenRect, &quit);
+              PlayGame(window, windowRect, &quit);
             }
           }
         }

@@ -6,6 +6,8 @@
 
 const static float UPDATEANGLE=4.0;
 const static float UPDATESPEED=0.2;
+
+
 Car::Car(const ngl::Mat4 &_view, const ngl::Mat4 &_project, ngl::Vec3 _pos) : m_view(_view),m_projection(_project)
 {
   m_pos=_pos;
