@@ -3,7 +3,7 @@
 #include <iostream>
 #include "GameDraw.h"
 #include "Menu.h"
-#include "Game.h"
+#include "GameLoop.h"
 #include <ngl/NGLInit.h>
 
 int main( int argc, char* args[] )

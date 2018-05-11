@@ -1,5 +1,5 @@
 #include "Menu.h"
-#include "Game.h"
+#include "GameLoop.h"
 #include <iostream>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
@@ -10,7 +10,7 @@ Button::Button()
 Button::Button(const char *_label, SDL_Renderer *_renderer)
 {
   //set textFont
-  textFont = TTF_OpenFont("game_over.ttf",70);
+  textFont = TTF_OpenFont("font/game_over.ttf",70);
   //set buttonSpacing
   buttonSpacing = 0;
 

@@ -22,6 +22,8 @@ INCLUDEPATH += $$(HOME)/NGL/include/
 INCLUDEPATH +=usr/include/
 INCLUDEPATH +=include/
 
+OTHER_FILES += shaders/*.glsl
+
 # use this to suppress some warning from boost
 QMAKE_CXXFLAGS_WARN_ON += "-Wno-unused-parameter"
 QMAKE_CXXFLAGS+= -msse -msse2 -msse3
