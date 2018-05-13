@@ -1,65 +1,53 @@
 #include "GameEnv.h"
 #include <SDL2/SDL.h>
+#include <ngl/VAOPrimitives.h>
+#include <ngl/ShaderLib.h>
 
-Grid::Grid()
+GameEnv::GameEnv( std::string _texture )
 {
-  m_movementArea.w = 10;
-  m_movementArea.h = 10;
+  // set the texture
+  ngl::Texture t(_texture);
+  m_texID=t.setTextureGL();
+  // grab an instance of the VAO Primitives class and store it in prim
+  ngl::VAOPrimitives *prim=ngl::VAOPrimitives::instance();
+  // create a sphere primitive called "background"
+  prim->createSphere("background",300,20);
 }
 
-Grid::~Grid()
-{}
+GameEnv::~GameEnv()
+{
 
+}
 
-//// implement this function so that you can choose steps for width and height
-//void VAOPrimitives::createLineGrid( const std::string &_name, Real _width,  Real _depth, int _steps ) noexcept
-//{
-//  // a std::vector to store our verts, remember vector packs contiguously so we can use it
-//  std::vector <vertData> data;
-//  vertData vert;
-//    // claculate the step size for each grid value
-//  Real wstep=_width/static_cast<Real>(_steps);
-//  // pre-calc the offset for speed
-//  Real ws2=_width/2.0f;
-//  // assign v as our value to change each vertex pair
-//  Real v1=-ws2;
+GameEnv::draw(ngl::Camera *_camera)
+{
+  // grab an instance of the shader manager
+  ngl::ShaderLib *shader = ngl::ShaderLib::instance();
 
-//    // claculate the step size for each grid value
-//  Real dstep=_depth/static_cast<Real>(_steps);
-//  // pre-calc the offset for speed
-//  Real ds2=_depth/2.0f;
-//  // assign v as our value to change each vertex pair
-//  Real v2=-ds2;
+  // grab an instance of the VAO Primitives class
+  ngl::VAOPrimitives *prim = ngl::VAOPrimitives::instance();
 
-//    for(int i=0; i<=_steps; ++i)
-//    {
-//      // vertex 1 x,y,z
-//      vert.x=-ws2; // x
-//      vert.z=v1; // y
-//      vert.y=0.0; // z
-//      data.push_back(vert);
-//      // vertex 2 x,y,z
-//      vert.x=ws2; // x
-//      vert.z=v1; // y
-//      data.push_back(vert);
+  // use the GameEnv texture for the following draws
+  (*shader)["GameEnv"]->use();
 
+  // use t to make transformation matrices
+  ngl::Transformation t;
 
-//      // vertex 1 x,y,z
-//      vert.x=v2; // x
-//      vert.z=ds2; // y
-//      data.push_back(vert);
-//      // vertex 2 x,y,z
-//      vert.x=v2; // x
-//      vert.z=-ds2; // y
-//      data.push_back(vert);
+  // our MVP matrix
+  ngl::Mat4 MVP;
 
+  // set the MVP
+  MVP = _camera->getVPMatrix() * t.getMatrix();
+  // send the MVP to the shader
+  shader->setUniform("MVP",MVP);
+  // bind the texture
+  glBindTexture(GL_TEXTURE_2D,m_texID);
+  // draw the background
+  prim->draw("background");
 
+  // create a line grid
+  prim->createLineGrid("grid", 100, 100, 20);
+  // draw the grid
+  prim->draw("grid");
 
-//      // now change our step value
-//      v1+=wstep;
-//      v2+=dstep;
-//    }
-
-//  createVAO(_name,data,GL_LINES);
-
-//}
+}

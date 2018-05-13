@@ -1,16 +1,21 @@
 #ifndef GAMEENV_H__
 #define GAMEENV_H__
 #include <SDL2/SDL.h>
+#include <ngl/Camera.h>
+#include <string>
 
-//data for the object Grid
-class Grid
+class GameEnv
 {
 public:
-  Grid();
-  ~Grid();
+  GameEnv( std::string _texture );
+  ~GameEnv();
+
+  // a method that draws the environment for the game
+  void draw( ngl::Camera *_camera );
+
 private:
-  // the area within the grid where the player can move
-  SDL_Rect m_movementArea;
+  // the id where we store our texture
+  GLuint m_textureID;
 };
 
 #endif

@@ -17,6 +17,8 @@ public:
   void backward();
   void left();
   void right();
+  inline ngl::Vec3 getPos() const {return m_position;}
+  inline void setPos(float _x, float _z) {m_position = _pos;}
 
   float m_lives;
   bool m_state;

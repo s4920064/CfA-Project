@@ -11,22 +11,24 @@
 #define GAME_H__
 
 #include <ngl/Camera.h>
-#include <ngl/Light.h>
 #include <ngl/ShaderLib.h>
+#include <list>
 #include <SDL.h>
-#include "Car.h"
+#include "Ship.h"
+#include "Projectile.h"
+#include "GameEnv.h"
 
-class NGLDraw
+class Game
 {
   public :
     //----------------------------------------------------------------------------------------------------------------------
     /// @brief ctor this will have a valid OpenGL context so we can create gl stuff
     //----------------------------------------------------------------------------------------------------------------------
-    NGLDraw();
+    Game();
     //----------------------------------------------------------------------------------------------------------------------
     /// @brief dtor used to remove any NGL stuff created
     //----------------------------------------------------------------------------------------------------------------------
-    ~NGLDraw();
+    ~Game();
     //----------------------------------------------------------------------------------------------------------------------
     /// @brief resize our screen and set the camera aspect ratio
     /// @param[in] _w the new width
@@ -37,6 +39,13 @@ class NGLDraw
     /// @brief draw the scene
     //----------------------------------------------------------------------------------------------------------------------
     void draw();
+
+    // method to move the ship
+    void move(float _x, float _z);
+
+    // reset the ship position to the center
+    inline void resetPosition(){ m_ship.setPos(0,0); }
+
     //----------------------------------------------------------------------------------------------------------------------
     /// @brief this method is called every time a mouse is moved
     /// @param _event the SDL mouse event structure containing all mouse info
@@ -67,19 +76,32 @@ class NGLDraw
     void keyEvent(SDL_KeyboardEvent &_event);
 
   private :
-    //----------------------------------------------------------------------------------------------------------------------
-    /// @brief method to load transform data to the shaders
-    //----------------------------------------------------------------------------------------------------------------------
-    void loadMatricesToShader();
+    // initialize a shader program so that it can be used to draw
+    void initShaderProgram(const std::string &_name);
 
-    ngl::Mat4 m_view;
-    ngl::Mat4 m_projection;
+    // our camera
+    ngl::Camera *m_camera;
 
-    // the car
-    Car *m_car;
+    // the ship model
+    ngl::Obj *m_shipMesh;
 
-    // the shader
-    ngl::ShaderLib *shader;
+    // the projectile model
+    ngl::Obj *m_projectileMesh;
+
+    // the number of active projectiles
+    int m_activeProjectiles;
+
+    // the list of active rockets
+    std::list <Projectile *> m_projectiles;
+
+    // the game environment
+    GameEnv m_gameEnv;
+
+    // the ship
+    Ship m_ship;
+
+    // the ship movement bounds rectangle
+    SDL_Rect m_moveBounds;
 
 };
 

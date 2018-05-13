@@ -4,6 +4,7 @@
 #include <ngl/Obj.h>
 #include <ngl/Camera.h>
 #include <SDL_rect.h>
+#include <list>
 
 class Projectile
 {
@@ -13,23 +14,28 @@ public:
 
   void update();
   void draw( ngl::Camera *_camera );
-  bool collision( float shipRadius );
+  bool m_state;
+  /// @returns m_active
+  inline bool isActive() const {return m_active;}
+  // returns m_threat
+  inline bool isThreat() const {return m_threat;}
+  // current position of the projectile
+  ngl::Vec3 m_position;
 
+  // the radius for the collision bounds sphere
+  const float c_sphere = 0.3f;
+  // the projectile's state
   bool m_state;
 
 private:
-  // current position of the ship
-  ngl::Vec3 m_position;
   // the step size for movement
   float m_speed;
-  // a rect for the player movement area bounds
-  SDL_Rect m_moveBounds;
-  // the radius for the collision bounds sphere
-  const float c_sphere = 1.0f;
   // a pointer for the mesh data of the ship
   ngl::Obj *m_mesh;
   /// @brief flag to indicate if the rocket is still alive
   bool m_active;
+  // a flag to indicate if the rocket can collide with the ship
+  bool m_threat;
   /// @brief the current life of the rocket
   int m_life;
   /// @brief the max lifespan of the rocket (set in the ctor at present)

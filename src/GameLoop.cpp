@@ -2,7 +2,7 @@
 #include "SDL2/SDL.h"
 #include <cstdlib>
 #include <iostream>
-#include "GameDraw.h"
+#include "Game.h"
 #include <ngl/NGLInit.h>
 
 //FUNCTION FROM JON MACEY
