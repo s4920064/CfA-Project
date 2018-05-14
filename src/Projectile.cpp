@@ -2,6 +2,8 @@
 #include <ngl/Vec3.h>
 #include <ngl/Obj.h>
 #include <ngl/Camera.h>
+#include <ngl/ShaderLib.h>
+#include <ngl/Transformation.h>
 #include <SDL_rect.h>
 #include <random>
 
@@ -12,9 +14,9 @@ Projectile::Projectile( ngl::Vec3 _startPos, float _speed, ngl::Obj *_mesh )
   m_speed = _speed;
   m_active = true;
   m_threat = false;
-  m_state = rand(0,7) % 2;
-  m_maxLife=60;
-
+  m_state = rand() % 2;
+  m_maxLife = 3000;
+  m_mesh = _mesh;
 }
 
 Projectile::~Projectile()
@@ -26,7 +28,7 @@ Projectile::~Projectile()
 void Projectile::update( float _moveBoundsY )
 {
   // update the projectile's position based on the speed
-  m_position.m_z -= m_speed;
+  m_position.m_z += m_speed;
   // if the projectile has lived for as long as it should
   if(++m_life >= m_maxLife)
   {
@@ -68,13 +70,16 @@ void Projectile::draw( ngl::Camera *_camera )
   // set the MVP matrices
   M = t.getMatrix();
   MV = _camera->getViewMatrix() * M;
-  MVP = _camera->getVPMatrix() * MV;
+  MVP = _camera->getVPMatrix() * M;
 
   // send the MVP to the shader
   shader->setUniform("MVP", MVP);
-  shader->setUniform("N", N);
+  //shader->setUniform("N", N);
   //shader->setUniform("M", MVP);
   //shader->setUniform("VP", MVP);
+
+  // send the state of the ship to the shader
+  shader->setUniform("state", m_state);
 
   // draw the projectile mesh
   m_mesh->draw();

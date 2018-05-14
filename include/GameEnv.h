@@ -1,13 +1,12 @@
 #ifndef GAMEENV_H__
 #define GAMEENV_H__
-#include <SDL2/SDL.h>
 #include <ngl/Camera.h>
 #include <string>
 
 class GameEnv
 {
 public:
-  GameEnv( std::string _texture );
+  GameEnv( /*std::string _texture*/ );
   ~GameEnv();
 
   // a method that draws the environment for the game
@@ -15,7 +14,7 @@ public:
 
 private:
   // the id where we store our texture
-  GLuint m_textureID;
+  //GLuint m_textureID;
 };
 
 #endif

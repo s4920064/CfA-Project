@@ -13,13 +13,13 @@ public :
   void newScore(int _score);
 
   // returns the score at place #
-  int getHighscore(int _place);
+  inline int getHighscore(int _place) {return m_highscores[_place-1];}
 
 private :
   // the array of high scores
   int m_highscores[10];
   // flags whether a new high score has been set
   bool m_newHighscore;
-}
+};
 
 #endif

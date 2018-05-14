@@ -1,4 +1,6 @@
 #include "Game.h"
+#include "Ship.h"
+#include "GameEnv.h"
 #include <ngl/ShaderLib.h>
 #include <ngl/NGLInit.h>
 #include <ngl/Material.h>
@@ -9,22 +11,25 @@
 
 Game::Game()
 {
-  // set the clear color to grey
-  glClearColor(0.4f, 0.4f, 0.4f, 1.0f);
+  // set the clear color to dark grey
+  glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
   // enable depth testing for drawing
   glEnable(GL_DEPTH_TEST);
 
+  // set the time and score to zero
+  m_time = 0;
+  m_score = 0;
+
   ///-----------------The Camera------------------
   // values for the camera position
-  ngl::Vec3 from(0,5,10);
+  ngl::Vec3 from(0,2.5,6);
   ngl::Vec3 to(0,0,0);
-  ngl::Vec3 up(0,3,0);
-  m_view=ngl::lookAt(from,to,up);
+  ngl::Vec3 up(0,1,0);
   // load our camera
   m_camera= new ngl::Camera(from,to,up);
   // set the shape using FOV 45 Aspect Ratio based on Width and Height
   // The final two are near and far clipping planes of 0.5 and 10
-  m_camera->setShape(45,(float)720.0/576.0,0.05,350);
+  m_camera->setShape(45,720.0/576.0,0.05f,350.0f);
   ///---------------------------------------------
 
   ///------------------The Ship-------------------
@@ -32,10 +37,10 @@ Game::Game()
   initShaderProgram("Ship");
 
   // set the bounds rectangle
-  m_moveBounds.w = 5.0;
-  m_moveBounds.h = 5.0;
-  m_moveBounds.x = -m_moveBounds.w/2.0;
-  m_moveBounds.y = m_moveBounds.y/2.0;
+  m_moveBounds.w = 4;
+  m_moveBounds.h = 6;
+  m_moveBounds.x = -m_moveBounds.w/2;
+  m_moveBounds.y = -m_moveBounds.h/2;
 
   // ship starting position
   ngl::Vec3 startPos(0,0,0);
@@ -45,7 +50,7 @@ Game::Game()
   m_shipMesh->createVAO();
 
   // the ship object
-  m_ship = new Ship(startPos, 3.0, &m_moveBounds, m_shipMesh);
+  m_ship = new Ship(startPos, 3.0, m_moveBounds, m_shipMesh);
   ///---------------------------------------------
 
   ///---------------The Projectiles---------------
@@ -62,13 +67,11 @@ Game::Game()
 
   ///-------------The Game Environment------------
   // initialize the shader program for drawing the game environment
-  initShaderProgram("Background");
+  initShaderProgram("GameEnv");
 
   // construct the game environment
-  m_gameEnv = new GameEnv("textures/Background.png");
+  m_gameEnv = new GameEnv(/* "textures/Background.jpg" */);
   ///---------------------------------------------
-
-
 }
 
 Game::~Game()
@@ -86,7 +89,7 @@ void Game::resize(int _w, int _h)
 {
   glViewport(0,0,_w,_h);
   // now set the camera size values as the screen size has changed
-  m_cam->setShape(45,(float)_w/_h,0.05,350);
+  m_camera->setShape(45,(float)_w/_h,0.05,350);
 }
 
 void Game::draw()
@@ -94,59 +97,65 @@ void Game::draw()
   // clear the screen and depth buffer
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  // grab an instance of shader manager
-  ngl::ShaderLib *shader=ngl::ShaderLib::instance();
-
   // ---Draw the Environment---
-  // use the Background shader program to draw the game environment
-  (*shader)["Background"]->use();
-  // draw the game envrironment
-  m_gameEnv.draw(m_camera);
+  m_gameEnv->draw(m_camera);
 
   // ---Draw the Ship---
-  // use the Ship shader program to draw the game environment
-  (*shader)["Ship"]->use();
-  // draw the ship
-  m_ship.draw(m_camera);
+  m_ship->draw(m_camera);
 
   // ---Draw the Projectiles---
-  // use the Projectiles shader program to draw the projectiles
-  (*shader)["Projectile"]->use();
-  // draw the projectiles
-  std::list <Projectile *>::iterator start=m_projectiles.begin();
-  std::list <Projectile *>::iterator end=m_projectiles.end();
-  // use std::for_each and pass in a member function to draw
-  std::for_each(start,end,std::mem_fun(&Projectile::draw));
+  std::list <Projectile>::iterator i;
+  std::list <Projectile>::iterator end=m_projectiles.end();
+
+  for(i = m_projectiles.begin(); i != end; i++)
+  {
+    i->draw(m_camera);
+    //std::cout<< "drawing a projectile!!!!\n";
+  }
 }
 
 void Game::update()
 {
-  std::list <Projectile *>::iterator i=m_projectiles.begin();
-  std::list <Projectile *>::iterator end=m_projectiles.end();
+  m_time++;
+
+  m_score = m_time / 40;
+  //std::cout<< m_score << "\n";
+
+  if(m_time % 80 == 0)
+  {
+    int randX = (rand() % m_moveBounds.w) + m_moveBounds.x;
+    Projectile *p = new Projectile( ngl::Vec3(randX,0,-100), 0.5f, m_projectileMesh);
+    m_projectiles.push_back(*p);
+    ++m_activeProjectiles;
+    //std::cout<< p->m_state <<"\n";
+  }
+
+  std::list <Projectile>::iterator i;
+  std::list <Projectile>::iterator end=m_projectiles.end();
 
   // iterater to update the projectiles
-  for(i;  i != end; i++)
+  for(i = m_projectiles.begin(); i != end; i++)
   {
     // update the projectile
-    i->update(m_moveBounds);
+    i->update(m_moveBounds.y);
 
     // if it is active
     if(i->isActive())
     {
       if(i->isThreat())
       {
-        ngl::Vec3 shipPos = m_ship.getPos();
-        float distance = sqrt( pow(i->m_position->m_x - shipPos.m_x, 2)
-                               pow(i->m_position->m_z - shipPos.m_z, 2) );
+        ngl::Vec3 shipPos = m_ship->getPos();
+        float distance = sqrt( pow(i->m_position.m_x - shipPos.m_x, 2.0f) +
+                               pow(i->m_position.m_z - shipPos.m_z, 2.0f) );
         // if there is a collision between the projectile and the ship
-        if(distance < i->c_sphere + m_ship.c_sphere)
+        if(distance < i->c_sphere + m_ship->c_sphere)
         {
           // if they are different states
-          if(i->m_state != m_ship.m_state)
+          if(i->m_state != m_ship->m_state)
           {
-            m_ship.m_lives -= 1.0;
+            m_ship->m_lives -= 1.0;
           }
-          else { m_ship.m_lives += 0.1; }
+          else { m_ship->m_lives += 0.1; }
           m_projectiles.erase(i++);
         }
       }
@@ -156,45 +165,53 @@ void Game::update()
 
   // update the size of the active projectiles
   m_activeProjectiles=m_projectiles.size();
+
+  //std::cout<< m_ship->m_lives<<"\n";
+
 }
 
 void Game::initShaderProgram(const std::string &_name)
 {
+  // grab an instance of shader manager
+  ngl::ShaderLib *shader=ngl::ShaderLib::instance();
   // we are creating a shader called Texture
   shader->createShaderProgram(_name);
   // now we are going to create empty shaders for Frag and Vert
-  shader->attachShader("%sVertex" % (_name), ngl::ShaderType::VERTEX);
-  shader->attachShader("%sFragment" % (_name), ngl::ShaderType::FRAGMENT);
+  shader->attachShader(_name + "Vertex", ngl::ShaderType::VERTEX);
+  shader->attachShader(_name + "Fragment", ngl::ShaderType::FRAGMENT);
   // attach the source
-  shader->loadShaderSource("%sVertex" % (_name),"shaders/%sVertex.glsl" % (_name));
-  shader->loadShaderSource("%sFragment" % (_name),"shaders/%sFragment.glsl" % (_name));
+  shader->loadShaderSource(_name + "Vertex", "shaders/" + _name + "Vertex.glsl");
+  shader->loadShaderSource(_name + "Fragment", "shaders/" + _name + "Fragment.glsl");
   // compile the shaders
-  shader->compileShader("%sVertex" % (_name));
-  shader->compileShader("%sFragment" % (_name));
+  shader->compileShader(_name + "Vertex");
+  shader->compileShader(_name + "Fragment");
   // add them to the program
-  shader->attachShaderToProgram(_name,"%sVertex" % (_name));
-  shader->attachShaderToProgram(_name,"%sFragment" % (_name));
+  shader->attachShaderToProgram(_name, _name + "Vertex");
+  shader->attachShaderToProgram(_name, _name + "Fragment");
   // now we have associated this data we can link the shader
   shader->linkProgramObject(_name);
 }
 
-void Game::keyEvent(SDL_KeyboardEvent &_event)
-{
-  switch (_event.keysym.sym)
-  {
-    case SDLK_UP :
-      m_ship->forward();
-    break;
-    case SDLK_DOWN :
-      m_ship->backward();
-    break;
-    case SDLK_LEFT :
-      m_ship->left();
-    break;
-    case SDLK_RIGHT :
-      m_ship->right();
-    break;
-    default:
-    break;
-  }
-}
+//void Game::keyEvent(SDL_KeyboardEvent &_event)
+//{
+//  switch (_event.keysym.sym)
+//  {
+//    case SDLK_UP :
+//      m_ship->forward();
+//    break;
+//    case SDLK_DOWN :
+//      m_ship->backward();
+//    break;
+//    case SDLK_LEFT :
+//      m_ship->left();
+//    break;
+//    case SDLK_RIGHT :
+//      m_ship->right();
+//    break;
+//    case SDLK_SPACE :
+//      m_ship->changeState();
+//    break;
+//    default:
+//    break;
+//  }
+//}

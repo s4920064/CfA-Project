@@ -17,8 +17,3 @@ void Highscores::newScore(int _score)
     std::sort(m_highscores, m_highscores + 10);
   }
 }
-
-int Highscores::getHighscore(int _place);
-{
-  return m_highscores[_place-1];
-}

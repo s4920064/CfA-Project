@@ -9,10 +9,10 @@
 class Projectile
 {
 public:
-  Projectile( ngl::Vec3 _startPos, float _life, ngl::Obj *_mesh );
+  Projectile( ngl::Vec3 _startPos, float _speed, ngl::Obj *_mesh );
   ~Projectile();
 
-  void update();
+  void update(float _moveBoundsY);
   void draw( ngl::Camera *_camera );
   bool m_state;
   /// @returns m_active
@@ -23,9 +23,8 @@ public:
   ngl::Vec3 m_position;
 
   // the radius for the collision bounds sphere
-  const float c_sphere = 0.3f;
+  const float c_sphere = 0.1f;
   // the projectile's state
-  bool m_state;
 
 private:
   // the step size for movement

@@ -12,23 +12,14 @@ Ship::Ship( ngl::Vec3 _pos, float _lives, SDL_Rect &_moveBounds, ngl::Obj *_mesh
   m_moveBounds = _moveBounds;
   // set the ship's mesh
   m_mesh = _mesh;
-
-  // load the mesh and make make a virtua abstract object from the mesh data
-  m_mesh = new ngl::Obj("models/buggy.obj");
-  m_mesh->createVAO();
   // set the player lives
   m_lives = _lives;
+  // set the ship state to true
+  m_state = true;
 }
 
 Ship::~Ship()
 {
-  // free the memory of the ship mesh pointer
-  delete m_mesh;
-}
-
-void Ship::update()
-{
-
 }
 
 void Ship::draw(ngl::Camera *_camera)
@@ -54,13 +45,16 @@ void Ship::draw(ngl::Camera *_camera)
   // set the MVP matrices
   M = t.getMatrix();
   MV = _camera->getViewMatrix() * M;
-  MVP = _camera->getVPMatrix() * MV;
+  MVP = _camera->getVPMatrix() * M;
 
   // send the MVP to the shader
   shader->setUniform("MVP", MVP);
-  shader->setUniform("N", N);
+  //shader->setUniform("N", N);
   //shader->setUniform("M", MVP);
   //shader->setUniform("VP", MVP);
+
+  // send the state of the ship to the shader
+  shader->setUniform("state", m_state);
 
   // draw the ship mesh
   m_mesh->draw();
@@ -69,17 +63,17 @@ void Ship::draw(ngl::Camera *_camera)
 void Ship::forward()
 {
   // if the new position won't be past the top side of the bounds rect
-  if(m_position.m_z + c_step < m_moveBounds.y)
+  if(m_position.m_z - c_step > m_moveBounds.y)
   // then move it forward
-  { m_position.m_z += c_step; }
+  { m_position.m_z -= c_step; }
 }
 
 void Ship::backward()
 {
   // if the new position won't be past the bottom side of the bounds rect
-  if(m_position.m_z - c_step > m_moveBounds.y - m_moveBounds.h)
+  if(m_position.m_z + c_step < m_moveBounds.y + m_moveBounds.h)
   // then move it backward
-  { m_position.m_z -= c_step; }
+  { m_position.m_z += c_step; }
 }
 
 void Ship::left()

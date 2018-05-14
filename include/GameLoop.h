@@ -1,5 +1,5 @@
-#ifndef _GAMELOOP_H_
-#define _GAMELOOP_H_
+#ifndef _GAMELOOP_H__
+#define _GAMELOOP_H__
 #include <SDL2/SDL.h>
 #include <cstdlib>
 #include <iostream>

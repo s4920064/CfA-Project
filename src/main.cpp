@@ -1,7 +1,7 @@
 #include "SDL2/SDL.h"
 #include <cstdlib>
 #include <iostream>
-#include "GameDraw.h"
+#include "Game.h"
 #include "Menu.h"
 #include "GameLoop.h"
 #include <ngl/NGLInit.h>
@@ -28,7 +28,7 @@ int main( int argc, char* args[] )
 
 
   // now create our window
-  SDL_Window *window=SDL_CreateWindow("Polarizer",
+  SDL_Window *window=SDL_CreateWindow("Game",
                                       SDL_WINDOWPOS_CENTERED,
                                       SDL_WINDOWPOS_CENTERED,
                                       windowRect.w,
@@ -80,7 +80,6 @@ int main( int argc, char* args[] )
             if(mainMenu.m_playButton.isInside(mouseX, mouseY))
             {
               //open game screen and start game loop
-              //UI.Game();
               PlayGame(window, windowRect, &quit);
             }
           }

@@ -44,7 +44,7 @@ class Game
     void move(float _x, float _z);
 
     // reset the ship position to the center
-    inline void resetPosition(){ m_ship.setPos(0,0); }
+    inline void resetPosition(){ m_ship->setPos(0,0); }
 
     //----------------------------------------------------------------------------------------------------------------------
     /// @brief this method is called every time a mouse is moved
@@ -73,7 +73,13 @@ class Game
     //----------------------------------------------------------------------------------------------------------------------
     /// @brief this method is to update the scene
     //----------------------------------------------------------------------------------------------------------------------
-    void keyEvent(SDL_KeyboardEvent &_event);
+    //void keyEvent(SDL_KeyboardEvent &_event);
+
+    //void move(int _x, int _z) { m_ship->move(_x,_z); }
+
+    unsigned int m_score;
+
+    unsigned int m_time;
 
   private :
     // initialize a shader program so that it can be used to draw
@@ -92,13 +98,13 @@ class Game
     int m_activeProjectiles;
 
     // the list of active rockets
-    std::list <Projectile *> m_projectiles;
+    std::list <Projectile> m_projectiles;
 
     // the game environment
-    GameEnv m_gameEnv;
+    GameEnv *m_gameEnv;
 
     // the ship
-    Ship m_ship;
+    Ship *m_ship;
 
     // the ship movement bounds rectangle
     SDL_Rect m_moveBounds;
