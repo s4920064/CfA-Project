@@ -14,7 +14,7 @@ CC            = gcc
 CXX           = g++
 DEFINES       = -DQT5BUILD -DGL42 -DLINUX -DQT_QML_DEBUG -DQT_GUI_LIB -DQT_CORE_LIB
 CFLAGS        = -pipe -g -Wall -W -D_REENTRANT -fPIC $(DEFINES)
-CXXFLAGS      = -pipe -msse -msse2 -msse3 -I/usr/local/include/SDL2 -D_REENTRANT -march=native -g -std=gnu++11 -Wall -W -Wno-unused-parameter -D_REENTRANT -fPIC $(DEFINES)
+CXXFLAGS      = -pipe -msse -msse2 -msse3 -I/usr/local/include/SDL2 -D_REENTRANT -I/usr/local/include/freetype2 -march=native -g -std=gnu++11 -Wall -W -Wno-unused-parameter -D_REENTRANT -fPIC $(DEFINES)
 INCPATH       = -I. -I/home/s4920064/NGL/include -Iusr/include/ -Iinclude -I/opt/Qt5.9.0/5.9/gcc_64/include -I/opt/Qt5.9.0/5.9/gcc_64/include/QtGui -I/opt/Qt5.9.0/5.9/gcc_64/include/QtCore -I. -isystem /usr/include/libdrm -I/opt/Qt5.9.0/5.9/gcc_64/mkspecs/linux-g++
 QMAKE         = /opt/Qt5.9.0/5.9/gcc_64/bin/qmake
 DEL_FILE      = rm -f
@@ -39,7 +39,7 @@ DISTNAME      = Project1.0.0
 DISTDIR = /home/s4920064/BU\ Year\ 2/Computing\ for\ Animation/Project/obj/Project1.0.0
 LINK          = g++
 LFLAGS        = -Wl,-rpath,/opt/Qt5.9.0/5.9/gcc_64/lib
-LIBS          = $(SUBLIBS) -L/$(HOME)/NGL/lib -l NGL -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lSDL2 -lSDL2_ttf -lSDL2_image -L/opt/Qt5.9.0/5.9/gcc_64/lib -lQt5Gui -lQt5Core -lGL -lpthread 
+LIBS          = $(SUBLIBS) -L/$(HOME)/NGL/lib -l NGL -L/usr/local/lib -Wl,-rpath,/usr/local/lib -lSDL2 -lfreetype -lSDL2_ttf -lSDL2_image -L/opt/Qt5.9.0/5.9/gcc_64/lib -lQt5Gui -lQt5Core -lGL -lpthread 
 AR            = ar cqs
 RANLIB        = 
 SED           = sed
@@ -510,7 +510,7 @@ compiler_moc_predefs_make_all: moc_predefs.h
 compiler_moc_predefs_clean:
 	-$(DEL_FILE) moc_predefs.h
 moc_predefs.h: /opt/Qt5.9.0/5.9/gcc_64/mkspecs/features/data/dummy.cpp
-	g++ -pipe -msse -msse2 -msse3 -I/usr/local/include/SDL2 -D_REENTRANT -march=native -g -std=gnu++11 -Wall -W -Wno-unused-parameter -dM -E -o moc_predefs.h /opt/Qt5.9.0/5.9/gcc_64/mkspecs/features/data/dummy.cpp
+	g++ -pipe -msse -msse2 -msse3 -I/usr/local/include/SDL2 -D_REENTRANT -I/usr/local/include/freetype2 -march=native -g -std=gnu++11 -Wall -W -Wno-unused-parameter -dM -E -o moc_predefs.h /opt/Qt5.9.0/5.9/gcc_64/mkspecs/features/data/dummy.cpp
 
 compiler_moc_header_make_all:
 compiler_moc_header_clean:
@@ -807,8 +807,8 @@ obj/Game.o: src/Game.cpp include/Game.h \
 		/home/s4920064/NGL/include/ngl/NGLassert.h \
 		include/Projectile.h \
 		include/GameEnv.h \
-		/home/s4920064/NGL/include/ngl/NGLInit.h \
 		/home/s4920064/NGL/include/ngl/VAOPrimitives.h \
+		/home/s4920064/NGL/include/ngl/NGLInit.h \
 		/home/s4920064/NGL/include/ngl/Material.h \
 		/home/s4920064/NGL/include/ngl/NGLStream.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/Game.o src/Game.cpp
@@ -1096,7 +1096,8 @@ obj/GameLoop.o: src/GameLoop.cpp include/GameLoop.h \
 		include/Projectile.h \
 		include/GameEnv.h \
 		/home/s4920064/NGL/include/ngl/NGLInit.h \
-		/home/s4920064/NGL/include/ngl/VAOPrimitives.h
+		/home/s4920064/NGL/include/ngl/VAOPrimitives.h \
+		include/Menu.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o obj/GameLoop.o src/GameLoop.cpp
 
 obj/HighScores.o: src/HighScores.cpp include/HighScores.h

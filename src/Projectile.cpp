@@ -10,12 +10,14 @@
 Projectile::Projectile( ngl::Vec3 _startPos, float _speed, ngl::Obj *_mesh )
 {
   m_position = _startPos;
+  m_rotation.m_z = rand() % 360;
   m_life = 0;
   m_speed = _speed;
+  m_rotSpeed = 5;
   m_active = true;
   m_threat = false;
   m_state = rand() % 2;
-  m_maxLife = 3000;
+  m_maxLife = 250;
   m_mesh = _mesh;
 }
 
@@ -25,10 +27,13 @@ Projectile::~Projectile()
 }
 
 // update the projectile's position and flags
-void Projectile::update( float _moveBoundsY )
+void Projectile::update( float _moveBoundsY, float _shipRadius)
 {
   // update the projectile's position based on the speed
   m_position.m_z += m_speed;
+  // update the projectile's rotation based on the rotation speed
+  m_rotation.m_z += m_rotSpeed;
+
   // if the projectile has lived for as long as it should
   if(++m_life >= m_maxLife)
   {
@@ -38,7 +43,7 @@ void Projectile::update( float _moveBoundsY )
   else
   {
     // if the projectile is in range to collide with the ship
-    if(m_position.m_z > _moveBoundsY)
+    if(m_position.m_z > _moveBoundsY-_shipRadius)
     {
       // then flag it as a threat
       m_threat = true;
@@ -65,7 +70,7 @@ void Projectile::draw( ngl::Camera *_camera )
 
   // set the position of the projectile
   t.setPosition(m_position);
-  //t.setRotation(0,0,0);
+  t.setRotation(m_rotation);
 
   // set the MVP matrices
   M = t.getMatrix();

@@ -12,7 +12,7 @@ in vec2 vertUV;
 out vec4 outColour;
 void main()
 {
- if(isGrid) { outColour = vec4(0,0,1,1); }
+ if(isGrid) { outColour = vec4(0.0,1,0,1); }
  // set the fragment colour to the current texture
- else { outColour = vec4(0.5,0.5,0.5,1); }
+ else { outColour = vec4(0.0,0.0,0.0,1); }
 }

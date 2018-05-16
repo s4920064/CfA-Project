@@ -14,6 +14,9 @@ GameEnv::GameEnv( /*std::string _texture*/ )
   ngl::VAOPrimitives *prim=ngl::VAOPrimitives::instance();
   // create a sphere primitive called "background"
   prim->createSphere("background",300,20);
+  // create a line grid
+  prim->createLineGrid("grid", 200, 200, 100);
+  //prim->createTrianglePlane();
 }
 
 GameEnv::~GameEnv()
@@ -32,16 +35,13 @@ void GameEnv::draw(ngl::Camera *_camera)
   // use the GameEnv texture for the following draws
   (*shader)["GameEnv"]->use();
 
-  // use t to make transformation matrices
-  ngl::Transformation t;
-
   // our MVP matrix
   ngl::Mat4 MVP;
 
   bool isGrid = true;
 
   // set the MVP
-  MVP = _camera->getVPMatrix() * t.getMatrix();
+  MVP = _camera->getVPMatrix() * m_model;
   // send the MVP to the shader
   shader->setUniform("MVP",MVP);
 
@@ -49,8 +49,7 @@ void GameEnv::draw(ngl::Camera *_camera)
   //glBindTexture(GL_TEXTURE_2D,m_textureID);
 
   shader->setUniform("isGrid",isGrid);
-  // create a line grid
-  prim->createLineGrid("grid", 200, 200, 100);
+
   // draw the grid
   prim->draw("grid");
 
@@ -61,3 +60,17 @@ void GameEnv::draw(ngl::Camera *_camera)
   prim->draw("background");
 
 }
+
+void GameEnv::update(float _speed)
+{
+  m_gridPos += _speed;
+
+  if(m_gridPos >= 2) { m_gridPos = 0; }
+
+  ngl::Transformation t;
+  t.addPosition(0,0, m_gridPos);
+
+  m_model = t.getMatrix();
+}
+
+

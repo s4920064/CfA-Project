@@ -18,13 +18,16 @@
 #include "Projectile.h"
 #include "GameEnv.h"
 
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
 class Game
 {
   public :
     //----------------------------------------------------------------------------------------------------------------------
     /// @brief ctor this will have a valid OpenGL context so we can create gl stuff
     //----------------------------------------------------------------------------------------------------------------------
-    Game();
+    Game(int _h);
     //----------------------------------------------------------------------------------------------------------------------
     /// @brief dtor used to remove any NGL stuff created
     //----------------------------------------------------------------------------------------------------------------------
@@ -34,7 +37,7 @@ class Game
     /// @param[in] _w the new width
     /// @param[in] _h the new height
     //----------------------------------------------------------------------------------------------------------------------
-    void resize(int _w, int _h);
+    void resize(int _h);
     //----------------------------------------------------------------------------------------------------------------------
     /// @brief draw the scene
     //----------------------------------------------------------------------------------------------------------------------
@@ -44,7 +47,7 @@ class Game
     void move(float _x, float _z);
 
     // reset the ship position to the center
-    inline void resetPosition(){ m_ship->setPos(0,0); }
+    inline void resetPosition(){ m_ship->setX(0); m_ship->setZ(0); }
 
     //----------------------------------------------------------------------------------------------------------------------
     /// @brief this method is called every time a mouse is moved
@@ -73,17 +76,33 @@ class Game
     //----------------------------------------------------------------------------------------------------------------------
     /// @brief this method is to update the scene
     //----------------------------------------------------------------------------------------------------------------------
-    //void keyEvent(SDL_KeyboardEvent &_event);
+    void move(int _x,int _z);
 
-    //void move(int _x, int _z) { m_ship->move(_x,_z); }
+    inline void changeState() {m_ship->changeState();}
 
     unsigned int m_score;
 
     unsigned int m_time;
 
+    float m_lives;
+
   private :
     // initialize a shader program so that it can be used to draw
-    void initShaderProgram(const std::string &_name);
+    //void initShaderProgram(const std::string &_name);
+
+    // Utility function for loading up a 2D texture
+    void initTexture(const GLuint&, GLuint &, const char *);
+
+    // initilize the framebuffer objects
+    void initFBO();
+
+    void render_text(const char *text, float x, float y, float sx, float sy);
+
+    // Keep track of whether the FBO needs to be recreated
+    bool m_isFBODirty = true;
+
+    // the width and height of the window
+    int m_width, m_height;
 
     // our camera
     ngl::Camera *m_camera;
@@ -108,6 +127,14 @@ class Game
 
     // the ship movement bounds rectangle
     SDL_Rect m_moveBounds;
+
+    // the IDs used for the frame buffer objects and their associated textures
+    GLuint m_fboId, m_fboGameTexId, m_fboGameDepthId;
+
+    FT_Library m_ft;
+    FT_Face m_face;
+
+    FT_GlyphSlot m_g = m_face->glyph;
 
 };
 

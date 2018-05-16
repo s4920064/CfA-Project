@@ -33,7 +33,7 @@ int main( int argc, char* args[] )
                                       SDL_WINDOWPOS_CENTERED,
                                       windowRect.w,
                                       windowRect.h,
-                                      SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
+                                      SDL_WINDOW_OPENGL
                                      );
   // check to see if that worked or exit
   if (!window)

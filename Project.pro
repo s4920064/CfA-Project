@@ -13,7 +13,6 @@ DESTDIR=./
 OBJECTS_DIR=obj
 SOURCES=src/*.cpp
 
-
 HEADERS+=include/*.h
 # add the ngl lib
 LIBS +=  -L/$(HOME)/NGL/lib -l NGL
@@ -30,10 +29,10 @@ QMAKE_CXXFLAGS+= -msse -msse2 -msse3
 macx:QMAKE_CXXFLAGS+= -arch x86_64
 macx:INCLUDEPATH+=/usr/local/boost/
 
-QMAKE_CXXFLAGS+=$$system(sdl2-config  --cflags)
+QMAKE_CXXFLAGS+=$$system(sdl2-config --cflags) $$system(freetype-config --cflags)
 message(output from sdl2-config --cflags added to CXXFLAGS= $$QMAKE_CXXFLAGS)
 
-LIBS+=$$system(sdl2-config  --libs) -lSDL2_ttf -lSDL2_image
+LIBS+=$$system(sdl2-config --libs) $$system(freetype-config --libs) -lSDL2_ttf -lSDL2_image
 message(output from sdl2-config --libs -lSDL2 -lSDL_ttf added to LIB=$$LIBS)
 
 

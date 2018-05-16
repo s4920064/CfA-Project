@@ -12,9 +12,17 @@ public:
   // a method that draws the environment for the game
   void draw( ngl::Camera *_camera );
 
+  void update(float _speed);
+
 private:
   // the id where we store our texture
   //GLuint m_textureID;
+
+  // the model matrix
+  ngl::Mat4 m_model;
+
+  float m_gridPos;
+
 };
 
 #endif

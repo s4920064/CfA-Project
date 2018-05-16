@@ -3,8 +3,13 @@
 #include "Ship.h"
 #include "SDL2/SDL.h"
 #include <cstdlib>
+#include <SDL2/SDL_ttf.h>
 #include <iostream>
 #include <ngl/NGLInit.h>
+#include "Menu.h"
+
+
+const static float UPDATE= 0.1;
 
 //FUNCTION FROM JON MACEY
 void SDLErrorExit(const std::string &_msg)
@@ -18,7 +23,7 @@ void SDLErrorExit(const std::string &_msg)
 void PlayGame(SDL_Window *window, SDL_Rect windowRect, bool *quit)
 {
   //CODE FROM JON MACEY (STARTS HERE)
-  // Create our opegame context and attach it to our window
+  // Create our openGL context and attach it to our window
   SDL_GLContext glContext=createOpenGLContext(window);
   if(!glContext)
   {
@@ -41,14 +46,22 @@ void PlayGame(SDL_Window *window, SDL_Rect windowRect, bool *quit)
   // sdl event processing data structure
   SDL_Event event;
   // now we create an instance of our game class, this will init game and setup basic
-  // opegame stuff ext. When this falls out of scope the dtor will be called and cleanup
-  // our gl stuff
-  Game game;
-  // resize the game to set the screen size and camera stuff
-  game.resize(windowRect.w,windowRect.h);
+  // openGL stuff ext. When this falls out of scope the dtor will be called and cleanup
 
-  int gameMoveX = 0;
-  int gameMoveZ = 0;
+  SDL_SetWindowSize(window, int(float(windowRect.h)*1.5f), windowRect.h);
+
+  Game game(windowRect.h);
+
+  // resize the game to set the screen size and camera stuff
+  game.resize(windowRect.h);
+
+  int gameMoveL = 0;
+  int gameMoveR = 0;
+  int gameMoveF = 0;
+  int gameMoveB = 0;
+
+  float gameMoveX = 0;
+  float gameMoveZ = 0;
 
   while(!back)
   {
@@ -59,24 +72,35 @@ void PlayGame(SDL_Window *window, SDL_Rect windowRect, bool *quit)
         // this is the window x being clicked.
         case SDL_QUIT : *quit = true; back = true; break;
         /// process the mouse data by passing it to game class
-        ///case SDL_MOUSEMOTION : game.mouseMoveEvent(event.motion); break;
-        ///case SDL_MOUSEBUTTONDOWN : game.mousePressEvent(event.button); break;
-        ///case SDL_MOUSEBUTTONUP : game.mouseReleaseEvent(event.button); break;
+//        case SDL_MOUSEMOTION :
+//        break;
+        case SDL_MOUSEBUTTONDOWN :
+//          mouseDown = true;
+        break;
+        case SDL_MOUSEBUTTONUP :
+//          mouseDown = false;
+        break;
         ///case SDL_MOUSEWHEEL : game.wheelEvent(event.wheel);
+
         /// if the window is re-sized pass it to the game class to change gl viewport
         /// note this is slow as the context is re-create by SDL each time
-        /// case SDL_WINDOWEVENT :
-          ///int w,h;
-          /// get the new window size
-          ///SDL_GetWindowSize(window,&w,&h);
-          ///game.resize(w,h);
-        ///break;
+//        case SDL_WINDOWEVENT :
+////          if(mouseDown) { resizing = true; }
+////          else
+////          {
+////            resizing = false;
+//            int w,h;
+//            //get the new window size
+//            SDL_GetWindowSize(window,&w,&h);
+//            SDL_SetWindowSize(window, int(float(h)*1.3f), h);
+//            game.resize(h);
+//            std::cout<<w<<"  "<<h<<"\n";
+////          }
+//        break;
 
         // now we look for a keydown event
         case SDL_KEYDOWN:
         {
-//          // Handle player ship button events
-//          game.keyEvent(event.key);
           switch( event.key.keysym.sym )
           {
             // if it's the escape key, exit to menu
@@ -90,36 +114,64 @@ void PlayGame(SDL_Window *window, SDL_Rect windowRect, bool *quit)
 
             ///case SDLK_g : SDL_SetWindowFullscreen(window,SDL_FALSE); break;
             case SDLK_UP :
-              gameMoveZ = -1;
+              gameMoveF = -1;
             break;
             case SDLK_DOWN :
-              gameMoveZ = 1;
+              gameMoveB = 1;
             break;
             case SDLK_LEFT :
-              gameMoveX = -1;
+              gameMoveL = -1;
             break;
             case SDLK_RIGHT :
-              gameMoveX = 1;
+              gameMoveR = 1;
             break;
-            //case SDLK_SPACE :
-            //  m_ship->changeState();
-            //break;
+            case SDLK_SPACE :
+              game.changeState();
+            break;
+            default : break;
+
+          } // end of key process
+        } // end of keydown
+        break;
+
+        case SDL_KEYUP:
+        {
+          switch( event.key.keysym.sym )
+          {
+            case SDLK_UP :
+              gameMoveF = 0;
+            break;
+            case SDLK_DOWN :
+              gameMoveB = 0;
+            break;
+            case SDLK_LEFT :
+              gameMoveL = 0;
+            break;
+            case SDLK_RIGHT :
+              gameMoveR = 0;
+            break;
             default : break;
 
           } // end of key process
         } // end of keydown
 
-        //default : break;
       } // end of event switch
     } // end of poll events
 
+
+    gameMoveX += UPDATE*(gameMoveL+gameMoveR);
+    gameMoveZ += UPDATE*(gameMoveF+gameMoveB);
+
     // now we draw game
-    //game.move(gameMoveX,gameMoveZ);
+    game.move(gameMoveX,gameMoveZ);
     game.update();
     game.draw();
     // swap the buffers
     SDL_GL_SwapWindow(window);
-  //std::cout<<"still in loop\n";
+
+    gameMoveX = 0;
+    gameMoveZ = 0;
+
   }
   // clean up the game scene
   //game.~Game();
