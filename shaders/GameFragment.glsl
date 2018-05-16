@@ -5,6 +5,8 @@
 // The texture to be mapped
 uniform sampler2D gameTex;
 uniform sampler2D depthTex;
+uniform sampler2D textTex;
+uniform sampler2D maskTex;
 
 // The depth at which we want to focus
 uniform float focalDepth = 0.93;
@@ -17,6 +19,7 @@ layout (location=0) out vec4 fragColor;
 
 // We pass the window size to the shader.
 uniform vec2 windowSize;
+uniform vec2 textSize;
 
 /***************************************************************************************************
  * Gaussian Blur functions and constants
@@ -78,20 +81,30 @@ float rand(vec2 co){
 }
 
 // The Poisson filter for irregular blurring
-vec4 PoissonFilter(vec2 texpos, float sigma) {
+vec4 PoissonFilter(sampler2D tex, vec2 texpos, float sigma) {
     int i;
-    vec4 colour = texture(gameTex, texpos);
+    vec4 colour = texture(tex, texpos);
     float angle = rand(texpos);
     mat2 rot = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
     for (i = 0; i < 12; ++i) {
         vec2 samplepos = texpos + 2 * sigma * rot * PoissonDisc[i];
-        colour += texture(gameTex, samplepos);
+        colour += texture(tex, samplepos);
     }
     return colour * 0.076923077; // Same as "/ 13.0"
 }
 
 /// end of code  *
 
+vec4 ChromaticAbberationBlur(sampler2D tex, vec2 UVpos, float sigma, float offset)
+{
+    // the three offsetted color channels to create the chromatic abberation effect
+    float blurredR = PoissonFilter(tex, vec2(UVpos.x-offset,UVpos.y),sigma).r;
+    float blurredG = PoissonFilter(tex, UVpos, sigma).g;
+    vec2 blurredBA = PoissonFilter(tex, vec2(UVpos.x+offset,UVpos.y),sigma).ba;
+
+    // final color
+    return vec4(blurredR, blurredG, blurredBA.x, blurredBA.y);
+}
 
 void main() {
 
@@ -110,41 +123,65 @@ void main() {
     // Determine sigma, the blur radius of this pixel
     float sigma = abs(focalDepth - texture(depthTex, gamePos).x) * blurRadius;
 
-    // chromatic abberation offset
-    float offset = 0.001*(pow(texture2D(depthTex, gamePos).r,3));
-
-    // the three offsetted color channels to create the chromatic abberation effect
-    float blurredR = PoissonFilter(vec2(gamePos.x-offset,gamePos.y),sigma).r;
-    float blurredG = PoissonFilter(gamePos, sigma).g;
-    float blurredB = PoissonFilter(vec2(gamePos.x+offset,gamePos.y),sigma).b;
+    // chromatic abberation offset (weighted for depth, otherwise it looks like there's
+    //                              two projectiles in the distance when there's only one)
+    float gameCAOffset = 0.001*(pow(texture2D(depthTex, gamePos).r,3));
 
     // final color of the game viewport
-    vec4 gameColor = vec4(blurredR, blurredG, blurredB, 1.0);
+    vec4 gameColor = ChromaticAbberationBlur(gameTex, gamePos, sigma, gameCAOffset);
     //--------------------------------------------------
 
     //----------------------Game UI---------------------
 
-    vec4 backColor = vec4(0.05,0.05,0.05,1);
-    float border = 0.05;
+    float flatCAOffset = 0;
 
-    //
-    float mask = 1;
-    if( texPos.x > border &&
-        texPos.y > border &&
-        texPos.x < gameSize.x+border &&
-        texPos.y < gameSize.y+border
-       )
-    {
-//    if(texPos.x < 0.5) {
-        mask = 0;
-    }
+    //vec4 backColor = ChromaticAbberationBlur(backTex, textPos, sigma, flatCAOffset);
+//    vec4 backColor = vec4(0.05,0.05,0.05,1);
+//    float border = 0.05;
+
+    vec2 _textSize = windowSize;
+
+    _textSize.y = -windowSize.y+1;
+
+//    float textOffset = 0.5;
+
+//    // the coordinates of our text surface (the y is flipped to put it right side up)
+    vec2 textPos = gl_FragCoord.xy / _textSize;
+
+    vec4 textColor = ChromaticAbberationBlur(textTex, textPos, sigma, flatCAOffset);
+
+    vec4 maskColor = ChromaticAbberationBlur(maskTex, textPos, sigma, flatCAOffset);
+
+//    // if the alpha for the text is black then so is the color
+//    if(textColor.a==0 ) {textColor=vec4(0);}
+
+    // if the pixel is not within the text texture bounds, then make it black
+    // (otherwise it wraps)
+//    if(texPos.x>textSize.x/windowSize.x*(6+textOffset) ||
+//       texPos.x<textSize.x/windowSize.x*(5+textOffset) ||
+//       texPos.y>textSize.y/windowSize.y*(9+textOffset))
+//    {
+//        textColor=vec4(0);
+//    }
+
+//    // a mask for the game viewport
+//    float mask = 1;
+//    // if the pixel is within the game viewport
+//    if( texPos.x > border &&
+//        texPos.y > border &&
+//        texPos.x < gameSize.x+border &&
+//        texPos.y < gameSize.y+border
+//       )
+//    {
+//        // the mask is black
+//        mask = 0;
+//    }
     //--------------------------------------------------
 
-    backColor *= mask;
-    gameColor *= abs(mask-1);
+    gameColor *= maskColor;
 
-    //fragColor = texture2D(depthTex, texpos);
-    fragColor = backColor+gameColor;
+    //fragColor = textColor;
+    fragColor = textColor+gameColor;
     //fragColor = gameColor;
 
 }

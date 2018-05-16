@@ -1,6 +1,7 @@
 #include "Game.h"
 #include "Ship.h"
 #include "GameEnv.h"
+#include "Menu.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <ngl/ShaderLib.h>
@@ -10,9 +11,7 @@
 #include <ngl/NGLStream.h>
 #include <SDL2/SDL_rect.h>
 #include <algorithm>
-
-#include <ft2build.h>
-#include FT_FREETYPE_H
+#include <SDL_ttf.h>
 
 Game::Game(int _h)
 {
@@ -33,6 +32,9 @@ Game::Game(int _h)
 
   // enable depth testing for drawing
   glEnable(GL_DEPTH_TEST);
+
+  //glEnable(GL_BLEND);
+  //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   // enable multisampling for smoother drawing
   glEnable(GL_MULTISAMPLE);
@@ -109,17 +111,9 @@ Game::Game(int _h)
   m_gameEnv = new GameEnv(/* "textures/Background.jpg" */);
   ///---------------------------------------------
 
-//  if (FT_Init_FreeType(&m_ft))
-//      std::cout << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
-
-//  if (FT_New_Face(m_ft, "font/game_over.ttf", 0, &m_face))
-//      std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;
-
-//  FT_Set_Pixel_Sizes(m_face, 0, 48);
-
-//  if(FT_Load_Char(m_face, 'X', FT_LOAD_RENDER)) {
-//    fprintf(stderr, "Could not load character 'X'\n");
-//  }
+  //m_text.resetnew ngl::Text(*m_font);
+  //m_text->setScreenSize(m_width,m_height);
+  //m_text->setColour(1,1,1);
 
 }
 
@@ -132,6 +126,7 @@ Game::~Game()
   delete m_projectileMesh;
   delete m_ship;
   delete m_gameEnv;
+  //delete m_text;
 }
 
 void Game::resize(int _h)
@@ -145,6 +140,7 @@ void Game::resize(int _h)
   // now set the camera size values as the screen size has changed
   m_camera->setShape(45,(float)m_width/m_height,0.05,350);
 
+  // the FBO is dirty
   m_isFBODirty = true;
 }
 
@@ -159,6 +155,9 @@ void Game::draw()
   // Bind the FBO to specify an alternative render target
   glBindFramebuffer(GL_FRAMEBUFFER, m_fboId);
 
+
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   // clear the screen and depth buffer
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -187,7 +186,7 @@ void Game::draw()
   glBindFramebuffer(GL_FRAMEBUFFER,0);
 
   // Set background colour
-  glClearColor(0.4f, 0.4f, 0.4f, 1.0f);
+  glClearColor(0, 0, 0, 0);
 
   // Clear the screen
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -201,6 +200,9 @@ void Game::draw()
   glActiveTexture(GL_TEXTURE4);
   glBindTexture(GL_TEXTURE_2D, m_fboGameDepthId);
 
+  glActiveTexture(GL_TEXTURE6);
+  glBindTexture(GL_TEXTURE_2D, m_fboTextTexId);
+
   // grab an instance of the shader manager
   ngl::ShaderLib *shader=ngl::ShaderLib::instance();
   // use the Game shader program for this draw
@@ -210,7 +212,10 @@ void Game::draw()
   // send the game texture and depth to the GPU
   glUniform1i(glGetUniformLocation(pid, "gameTex"), 3);
   glUniform1i(glGetUniformLocation(pid, "depthTex"), 4);
+  glUniform1i(glGetUniformLocation(pid, "textTex"), 6);
+  glUniform1i(glGetUniformLocation(pid, "maskTex"), 5);
   glUniform2f(glGetUniformLocation(pid, "windowSize"), m_width, m_height);
+  glUniform2f(glGetUniformLocation(pid, "textSize"), m_textSurface.m_x, m_textSurface.m_y);
 
   // set the MVP for the plane
   glm::mat4 MVP = glm::rotate(glm::mat4(1.0f), glm::pi<float>() * 0.5f, glm::vec3(1.0f,0.0f,0.0f));
@@ -220,15 +225,6 @@ void Game::draw()
   ngl::VAOPrimitives *prim=ngl::VAOPrimitives::instance();
   // draw the plane
   prim->draw("plane");
-
-  (*shader)["Projectile"]->use();
-
-//  float sx = 2.0 / m_width;
-//  float sy = 2.0 / m_height;
-
-
-//  render_text("The Quick Brown Fox Jumps Over The Lazy Dog",
-//                 sx,   sy,  sx, sy);
 
   // bind the plane texture
   glBindTexture(GL_TEXTURE_2D, 0);
@@ -377,10 +373,88 @@ void Game::initFBO()
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glBindTexture(GL_TEXTURE_2D, 0);
 
+  ///-----------------Generate GameScreen UI Surface-----------------
+
+  // create a surface the size of the screen and fill it with a background color
+  SDL_Surface* textSurface = SDL_CreateRGBSurface(0, m_width, m_height, 32, 0,0,0,1);
+  SDL_FillRect(textSurface,NULL,SDL_MapRGB(textSurface->format, 11, 11, 11));
+
+  ngl::Vec2 gameSize = ngl::Vec2(0.55,0.9);
+  float border = 0.05f;
+
+  SDL_Rect gameViewport;
+  gameViewport.w = int(gameSize.m_x*m_width);
+  gameViewport.h = int(gameSize.m_y*m_height);
+  gameViewport.x = int(border*m_width);
+  gameViewport.y = int(border*m_height);
+
+  // create a surfabce the size of the game viewport and fill it black
+  SDL_Surface* maskSurface = SDL_CreateRGBSurface(0, gameViewport.w, gameViewport.h, 32, 0,0,0,1);
+  SDL_FillRect(maskSurface,NULL,SDL_MapRGB(maskSurface->format, 0, 0, 0));
+
+  // create some text from our Button class and save the surface
+  Button score = Button("SCORE", 100);
+  SDL_Surface *scoreSurface = score.getSurface();
+
+  // same thing, only this text will display the actual score
+  Button scoreNum = Button(std::to_string(m_score).c_str(), 100);
+  SDL_Surface *scoreNumSurface = scoreNum.getSurface();
+
+  // set the positions of the different text surfaces within the area of the screen
+  score.setPosition(m_width-m_width/6, m_height/6, true);
+  scoreNum.setPosition(m_width-m_width/6, (m_height/8)*2, true);
+
+  // blit the text surfaces onto our screen-sized surface
+  SDL_BlitSurface(maskSurface, NULL, textSurface, &gameViewport);
+  SDL_BlitSurface(scoreSurface, NULL, textSurface, &score.m_borderRect);
+  SDL_BlitSurface(scoreNumSurface, NULL, textSurface, &scoreNum.m_borderRect);
+  ///-------------------------------------------------------
+
+  // render the SDL_Surface containing our text to a texture buffer
+  glGenTextures(1, &m_fboTextTexId);
+  glActiveTexture(GL_TEXTURE6);
+  glBindTexture(GL_TEXTURE_2D, m_fboTextTexId);
+  glTexImage2D(GL_TEXTURE_2D,
+               0,
+               GL_RGBA,
+               textSurface->w,
+               textSurface->h,
+               0,
+               GL_BGRA_EXT,
+               GL_UNSIGNED_BYTE,
+               textSurface->pixels);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+
+  SDL_FillRect(textSurface,NULL,SDL_MapRGB(textSurface->format, 0, 0, 0));
+  SDL_FillRect(maskSurface,NULL,SDL_MapRGB(maskSurface->format, 255, 255, 255));
+  SDL_BlitSurface(maskSurface, NULL, textSurface, &gameViewport);
+
+  // render the SDL_Surface containing our text to a texture buffer
+  glGenTextures(1, &m_fboMaskTexId);
+  glActiveTexture(GL_TEXTURE5);
+  glBindTexture(GL_TEXTURE_2D, m_fboMaskTexId);
+  glTexImage2D(GL_TEXTURE_2D,
+               0,
+               GL_RGBA,
+               textSurface->w,
+               textSurface->h,
+               0,
+               GL_BGRA_EXT,
+               GL_UNSIGNED_BYTE,
+               textSurface->pixels);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glBindTexture(GL_TEXTURE_2D, 0);
+
   // Create the frame buffer
   glGenFramebuffers(1, &m_fboId);
   glBindFramebuffer(GL_FRAMEBUFFER, m_fboId);
 
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fboMaskTexId, 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fboTextTexId, 0);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fboGameTexId, 0);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, m_fboGameDepthId, 0);
 
@@ -444,43 +518,4 @@ void Game::initTexture(const GLuint& texUnit, GLuint &texId, const char *filenam
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-}
-
-void Game::render_text(const char *text, float x, float y, float sx, float sy) {
-  const char *p;
-
-  for(p = text; *p; p++) {
-//    if(FT_Load_Char(m_face, *p, FT_LOAD_RENDER))
-//        continue;
-
-    glTexImage2D(
-      GL_TEXTURE_2D,
-      0,
-      GL_RED,
-      m_g->bitmap.width,
-      m_g->bitmap.rows,
-      0,
-      GL_RED,
-      GL_UNSIGNED_BYTE,
-      m_g->bitmap.buffer
-    );
-
-    float x2 = x + m_g->bitmap_left * sx;
-    float y2 = -y - m_g->bitmap_top * sy;
-    float w = m_g->bitmap.width * sx;
-    float h = m_g->bitmap.rows * sy;
-
-    GLfloat box[4][4] = {
-        {x2,     -y2    , 0, 0},
-        {x2 + w, -y2    , 1, 0},
-        {x2,     -y2 - h, 0, 1},
-        {x2 + w, -y2 - h, 1, 1},
-    };
-
-    glBufferData(GL_ARRAY_BUFFER, sizeof box, box, GL_DYNAMIC_DRAW);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-    x += (m_g->advance.x/64) * sx;
-    y += (m_g->advance.y/64) * sy;
-  }
 }

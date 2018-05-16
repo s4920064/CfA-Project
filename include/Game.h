@@ -9,7 +9,6 @@
 
 #ifndef GAME_H__
 #define GAME_H__
-
 #include <ngl/Camera.h>
 #include <ngl/ShaderLib.h>
 #include <list>
@@ -18,8 +17,6 @@
 #include "Projectile.h"
 #include "GameEnv.h"
 
-#include <ft2build.h>
-#include FT_FREETYPE_H
 
 class Game
 {
@@ -128,13 +125,12 @@ class Game
     // the ship movement bounds rectangle
     SDL_Rect m_moveBounds;
 
+    ngl::Vec2 m_textSurface;
+
     // the IDs used for the frame buffer objects and their associated textures
-    GLuint m_fboId, m_fboGameTexId, m_fboGameDepthId;
+    GLuint m_fboId, m_fboGameTexId, m_fboGameDepthId, m_fboTextTexId, m_fboMaskTexId;
 
-    FT_Library m_ft;
-    FT_Face m_face;
-
-    FT_GlyphSlot m_g = m_face->glyph;
+    //QFont *m_font = new QFont("Arial",16);
 
 };
 

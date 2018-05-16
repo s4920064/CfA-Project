@@ -5,63 +5,98 @@
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
 Button::Button()
-{}
+{
+  m_textSurface = SDL_CreateRGBSurface(0, 5, 5, 32, 0,0,0,0);
+}
+
+Button::Button(const char *_label, int _size)
+{
+  // set textFont
+  m_textFont = TTF_OpenFont("font/game_over.ttf", _size);
+  // set buttonSpacing
+  m_buttonSpacing = 0;
+
+  // set parameters for textRect
+  m_textRect.x = m_buttonSpacing;
+  m_textRect.y = m_buttonSpacing;
+  TTF_SizeText(m_textFont,"hello",&m_textRect.w,&m_textRect.h);
+
+  // set parameters for borderRect
+  m_borderRect.w = m_textRect.w+m_buttonSpacing*2;
+  m_borderRect.h = m_textRect.h+m_buttonSpacing*2;
+  m_borderRect.x = 0;
+  m_borderRect.y = 0;
+
+  // set textColor
+  m_textColor = {225,128,0,225};
+  // render text on textSurface
+  m_textSurface = TTF_RenderText_Solid(m_textFont,_label, m_textColor);
+
+}
 
 Button::Button(const char *_label, SDL_Renderer *_renderer)
 {
   //set textFont
-  textFont = TTF_OpenFont("font/game_over.ttf",70);
+  m_textFont = TTF_OpenFont("font/game_over.ttf",70);
   //set buttonSpacing
-  buttonSpacing = 0;
+  m_buttonSpacing = 0;
 
   //set parameters for textRect
-  textRect.x = buttonSpacing;
-  textRect.y = buttonSpacing;
-  TTF_SizeText(textFont,"hello",&textRect.w,&textRect.h);
+  m_textRect.x = m_buttonSpacing;
+  m_textRect.y = m_buttonSpacing;
+  TTF_SizeText(m_textFont,"hello",&m_textRect.w,&m_textRect.h);
 
   //set parameters for borderRect
-  borderRect.w = textRect.w+buttonSpacing*2;
-  borderRect.h = textRect.h+buttonSpacing*2;
-  borderRect.x = 0;
-  borderRect.y = 0;
+  m_borderRect.w = m_textRect.w+m_buttonSpacing*2;
+  m_borderRect.h = m_textRect.h+m_buttonSpacing*2;
+  m_borderRect.x = 0;
+  m_borderRect.y = 0;
 
   //set textColor
-  textColor = {225,128,0,225};
+  m_textColor = {225,128,0,225};
   //render text on textSurface
-  textSurface = TTF_RenderText_Solid(textFont,_label, textColor);
+  m_textSurface = TTF_RenderText_Solid(m_textFont,_label, m_textColor);
 
   //convert the textSurface to a texture
-  buttonTexture = SDL_CreateTextureFromSurface(_renderer, textSurface);
-  SDL_FreeSurface(textSurface);     //free the no longer needed textSurface
+  m_buttonTexture = SDL_CreateTextureFromSurface(_renderer, m_textSurface);
+  SDL_FreeSurface(m_textSurface);     //free the no longer needed textSurface
 
 }
 
 Button::~Button()
 {
   //m_functPtr = NULL;
+  // free the surface
+  //SDL_FreeSurface(m_textSurface);
+}
+
+void Button::setTexture(SDL_Renderer *_renderer)
+{
+  //convert the textSurface to a texture
+  m_buttonTexture = SDL_CreateTextureFromSurface(_renderer, m_textSurface);
 }
 
 void Button::setPosition(int _x, int _y, bool _centered)
 {
   if( _centered )
   {
-    borderRect.x = _x-(borderRect.w/2);
-    borderRect.y = _y-(borderRect.h/2);
+    m_borderRect.x = _x-(m_borderRect.w/2);
+    m_borderRect.y = _y-(m_borderRect.h/2);
   }
   else
   {
-    borderRect.x = _x;
-    borderRect.y = _y;
+    m_borderRect.x = _x;
+    m_borderRect.y = _y;
   }
 }
 
 bool Button::isInside(int _mouseX, int _mouseY)
 {
   //If the mouse is over the button. End reference.
-  if(     ( _mouseX > borderRect.x )
-       && ( _mouseX < borderRect.x + borderRect.w )
-       && ( _mouseY > borderRect.y )
-       && ( _mouseY < borderRect.y + borderRect.h )
+  if(     ( _mouseX > m_borderRect.x )
+       && ( _mouseX < m_borderRect.x + m_borderRect.w )
+       && ( _mouseY > m_borderRect.y )
+       && ( _mouseY < m_borderRect.y + m_borderRect.h )
      )
   {
     return true;
@@ -95,7 +130,7 @@ void MainMenu::render(SDL_Renderer *_renderer)
 
   // render playButton------------------------
   // turn playButton.borderRect into a const SDL_Rect for the SDL_RenderFillRect() function
-  const SDL_Rect playRect = m_playButton.borderRect;
+  const SDL_Rect playRect = m_playButton.m_borderRect;
   // fill button shape
   SDL_SetRenderDrawColor(_renderer,
                          m_buttonColor.r,
@@ -105,9 +140,9 @@ void MainMenu::render(SDL_Renderer *_renderer)
   SDL_RenderFillRect(_renderer, &playRect);
   // render the playButton text over top of the button color
   SDL_RenderCopy(_renderer,
-                 m_playButton.buttonTexture,
+                 m_playButton.getTexture(),
                  NULL,
-                 &m_playButton.borderRect);
+                 &m_playButton.m_borderRect);
   // ------------------------------------------
 
   // render instructionsButton-----------------
