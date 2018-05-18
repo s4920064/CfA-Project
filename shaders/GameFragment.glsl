@@ -2,11 +2,15 @@
 
 #version 430
 
+// The output colour. At location 0 it will be sent to the screen.
+layout (location=0) out vec4 fragColor;
+
 // The texture to be mapped
 uniform sampler2D gameTex;
 uniform sampler2D depthTex;
 uniform sampler2D textTex;
 uniform sampler2D maskTex;
+uniform sampler2D numTex;
 
 // The depth at which we want to focus
 uniform float focalDepth = 0.93;
@@ -14,12 +18,14 @@ uniform float focalDepth = 0.93;
 // A scale factor for the radius of blur
 uniform float blurRadius = 0.03;
 
-// The output colour. At location 0 it will be sent to the screen.
-layout (location=0) out vec4 fragColor;
-
 // We pass the window size to the shader.
 uniform vec2 windowSize;
-uniform vec2 textSize;
+
+// We pass the window size to the shader.
+uniform int score[5];
+uniform int scoreLength;
+uniform vec2 scorePlacement;
+uniform vec2 numDimensions;
 
 /***************************************************************************************************
  * Gaussian Blur functions and constants
@@ -100,10 +106,22 @@ vec4 ChromaticAbberationBlur(sampler2D tex, vec2 UVpos, float sigma, float offse
     // the three offsetted color channels to create the chromatic abberation effect
     float blurredR = PoissonFilter(tex, vec2(UVpos.x-offset,UVpos.y),sigma).r;
     float blurredG = PoissonFilter(tex, UVpos, sigma).g;
-    vec2 blurredBA = PoissonFilter(tex, vec2(UVpos.x+offset,UVpos.y),sigma).ba;
+    float blurredB = PoissonFilter(tex, vec2(UVpos.x+offset,UVpos.y),sigma).b;
 
     // final color
-    return vec4(blurredR, blurredG, blurredBA.x, blurredBA.y);
+    return vec4(blurredR, blurredG, blurredB, 1);
+}
+
+bool isInside(vec2 pixelCoord, vec2 rectCoord, vec2 rectDimensions)
+{
+    if(pixelCoord.x>rectCoord.x &&
+       pixelCoord.x<rectCoord.x+rectDimensions.x &&
+       pixelCoord.y>rectCoord.y &&
+       pixelCoord.y<rectCoord.y+rectDimensions.y)
+    {
+        return true;
+    }
+    else {return false;}
 }
 
 void main() {
@@ -112,19 +130,25 @@ void main() {
     // Determine the texture coordinate from the window size
     vec2 texPos = gl_FragCoord.xy / windowSize;
 
-    vec2 gameSize = vec2(0.6,1)*0.9;
+    // the new scaled size of the game
+    float gameScale = 0.9;
+    // The desired viewport ratio * the scale
+    vec2 gameSize = vec2(0.6,1)*gameScale;
 
     //-------------------Game Viewport------------------
-    // texture coordinates for drawing in the game viewport
+    // we want a bit of a border between the edge of the screen
+    // and the game viewport
     vec2 gameOffset = vec2(0.15,-0.05);
-    vec2 gamePos = texPos*1.1+gameOffset;//vec2(gameOffset.x,-gameOffset.y);
-    //vec2 gamePos = texPos;
+
+    // texture coordinates for drawing within the game viewport
+    vec2 gamePos = texPos*(1+(1-gameScale))+gameOffset;
 
     // Determine sigma, the blur radius of this pixel
     float sigma = abs(focalDepth - texture(depthTex, gamePos).x) * blurRadius;
 
-    // chromatic abberation offset (weighted for depth, otherwise it looks like there's
-    //                              two projectiles in the distance when there's only one)
+    // chromatic abberation offset
+    // (weighted for depth, otherwise it looks like there's
+    // two projectiles in the distance where there's only one)
     float gameCAOffset = 0.001*(pow(texture2D(depthTex, gamePos).r,3));
 
     // final color of the game viewport
@@ -132,57 +156,46 @@ void main() {
     //--------------------------------------------------
 
     //----------------------Game UI---------------------
+    // the chromatic abberation offset for our in-game UI
+    float flatCAOffset = 0.001;
 
-    float flatCAOffset = 0;
+    // because the origin on SDL_Surfaces is the top-left corner
+    // and without this everything is upside down
+    vec2 SDL_SurfaceSize = windowSize;
+    SDL_SurfaceSize.y = 1-windowSize.y;
 
-    //vec4 backColor = ChromaticAbberationBlur(backTex, textPos, sigma, flatCAOffset);
-//    vec4 backColor = vec4(0.05,0.05,0.05,1);
-//    float border = 0.05;
+    // the coordinates of our text surface
+    vec2 textPos = gl_FragCoord.xy / SDL_SurfaceSize;
 
-    vec2 _textSize = windowSize;
+    vec4 textColor = ChromaticAbberationBlur(textTex, textPos, 0.001, flatCAOffset);
+    vec4 maskColor = ChromaticAbberationBlur(maskTex, textPos, 0.005, flatCAOffset);
 
-    _textSize.y = -windowSize.y+1;
-
-//    float textOffset = 0.5;
-
-//    // the coordinates of our text surface (the y is flipped to put it right side up)
-    vec2 textPos = gl_FragCoord.xy / _textSize;
-
-    vec4 textColor = ChromaticAbberationBlur(textTex, textPos, sigma, flatCAOffset);
-
-    vec4 maskColor = ChromaticAbberationBlur(maskTex, textPos, sigma, flatCAOffset);
-
-//    // if the alpha for the text is black then so is the color
-//    if(textColor.a==0 ) {textColor=vec4(0);}
-
-    // if the pixel is not within the text texture bounds, then make it black
-    // (otherwise it wraps)
-//    if(texPos.x>textSize.x/windowSize.x*(6+textOffset) ||
-//       texPos.x<textSize.x/windowSize.x*(5+textOffset) ||
-//       texPos.y>textSize.y/windowSize.y*(9+textOffset))
-//    {
-//        textColor=vec4(0);
-//    }
-
-//    // a mask for the game viewport
-//    float mask = 1;
-//    // if the pixel is within the game viewport
-//    if( texPos.x > border &&
-//        texPos.y > border &&
-//        texPos.x < gameSize.x+border &&
-//        texPos.y < gameSize.y+border
-//       )
-//    {
-//        // the mask is black
-//        mask = 0;
-//    }
-    //--------------------------------------------------
+    //vec4 numColor = vec4(vec3(texture2D(numTex, textPos).rgb),1);
 
     gameColor *= maskColor;
+    vec4 outColor = gameColor+textColor;
 
-    //fragColor = textColor;
-    fragColor = textColor+gameColor;
-    //fragColor = gameColor;
+    vec4 numColor = ChromaticAbberationBlur(numTex, textPos, 0.001, flatCAOffset);
+
+    vec2 _scorePlacement = scorePlacement/windowSize;
+    vec2 _numDimensions = numDimensions/windowSize;
+    _scorePlacement.y = 1-_scorePlacement.y-_numDimensions.y;
+    _scorePlacement.x -= 0.04;
+
+    for(int i; i<scoreLength; i++)
+    {
+        vec2 numPlacement = vec2(_scorePlacement.x+_numDimensions.x*i,_scorePlacement.y);
+
+        if(isInside(texPos, numPlacement, _numDimensions))
+        {
+            vec2 translation = textPos - vec2(numPlacement.x,(1-_numDimensions.y)+numPlacement.y);
+            vec2 numPos = vec2(translation.x+_numDimensions.x*score[i],(translation.y)+2*numPlacement.y);
+            outColor = ChromaticAbberationBlur( numTex, vec2(numPos.x,numPos.y), 0.001, flatCAOffset );
+        }
+    }
+    //--------------------------------------------------
+
+    fragColor = outColor;
 
 }
 

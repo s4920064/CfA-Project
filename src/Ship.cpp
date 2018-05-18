@@ -15,10 +15,11 @@ Ship::Ship( ngl::Vec3 _pos, SDL_Rect &_moveBounds, ngl::Obj *_mesh )
   m_mesh = _mesh;
   // set the ship state to true
   m_state = true;
-  // set the ship damage state to false
-  m_damaged = false;
-
-  m_damageTimer = 0;
+  // initialize the effect struct values
+  m_effect.m_damaged = false;
+  m_effect.m_display = false;
+  m_effect.m_timer = 0;
+  m_effect.m_color = ngl::Vec4(0,0,0,1);
 }
 
 Ship::~Ship()
@@ -30,7 +31,7 @@ void Ship::draw(ngl::Camera *_camera)
   // grab an instance of the shader manager
   ngl::ShaderLib *shader = ngl::ShaderLib::instance();
   // use the Ship shader for the following draws
-  (*shader) ["Ship"]->use();
+  (*shader) ["Diffuse"]->use();
 
   // our MVP matrices
   ngl::Mat4 M;
@@ -57,9 +58,28 @@ void Ship::draw(ngl::Camera *_camera)
   //shader->setUniform("M", MVP);
   //shader->setUniform("VP", MVP);
 
-  // send the state of the ship to the shader
-  shader->setUniform("state", m_state);
-  shader->setUniform("damaged", m_damaged);
+  // the color of the ship
+  ngl::Vec4 color;
+
+  // if there is an effect being displayed
+  if(m_effect.m_display)
+  {
+    color = m_effect.m_color;
+  }
+  else
+  {
+    if(m_state)
+    {
+      color = ngl::Vec4(1,0,1,1);
+    }
+    else
+    {
+      color = ngl::Vec4(0,1,1,1);
+    }
+  }
+
+  // send that color to the shader
+  shader->setUniform("color", color);
 
   // draw the ship mesh
   m_mesh->draw();
@@ -67,16 +87,35 @@ void Ship::draw(ngl::Camera *_camera)
 
 void Ship::update()
 {
-  if(m_damageTimer > 0)
+  // if there is an effect going on
+  if(m_effect.m_timer > 0)
   {
-    if((m_damageTimer/10) % 2 == 0)
+    if(m_effect.m_damaged)
     {
-      m_damaged = true;
+      m_effect.m_color = ngl::Vec4(1,0,0,1);
     }
-    else {m_damaged = false;}
-    m_damageTimer--;
+    else
+    {
+      m_effect.m_color = ngl::Vec4(0,1,0,1);
+    }
+    // make the display flag flash on and off
+    if((m_effect.m_timer/10) % 2 == 0)
+    {
+      m_effect.m_display = true;
+    }
+    else
+    {
+      m_effect.m_color = ngl::Vec4(1,1,1,1);
+    }
+    m_effect.m_timer--;
   }
-  else { m_damaged = false; }
+  // if there is no effect going on
+  else
+  {
+    // make sure no effect is displaying
+    m_effect.m_display = false;
+    m_effect.m_timer = 0;
+  }
 }
 
 void Ship::forward(int _z)
@@ -112,4 +151,10 @@ void Ship::right(int _x)
   if(m_position.m_x + c_step*_x < m_moveBounds.x + m_moveBounds.w)
   // then move it right
   { m_position.m_x += c_step*_x; }
+}
+
+void Ship::setEffect(int _time, bool _damaged)
+{
+  m_effect.m_timer = _time;
+  m_effect.m_damaged = _damaged;
 }

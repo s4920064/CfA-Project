@@ -16,19 +16,12 @@
 */
 //---------------------------------------------------------------------------
 
-#include <iostream>
-#include <QtGui/QImage>
-#include <QFontMetrics>
-#include <unordered_map>
-
-#include <QPainter>
-#include <array>
-#include <memory>
 #include "Text.h"
-#include "ShaderLib.h"
-
-namespace ngl
-{
+#include <iostream>
+#include <ngl/ShaderLib.h>
+#include <ngl/VAOFactory.h>
+#include "SDL.h"
+#include "SDL_ttf.h"
 
 
 //---------------------------------------------------------------------------
@@ -50,37 +43,54 @@ unsigned int nearestPowerOfTwo ( unsigned int _num )
 // end citation
 
 //---------------------------------------------------------------------------
-Text::Text( const QFont &_f)  noexcept
+Text::Text( const std::string &_f, int _size)
 {
-
+	TTF_Init();
+	TTF_Font *font = TTF_OpenFont(_f.c_str(), _size );
+	SDL_Color color = { 0, 0, 0,0 };
+	if(font ==0 )
+	{
+		std::cerr<<"Error loading font "<<TTF_GetError()<<"\n";
+		exit(EXIT_FAILURE);
+	}
   // so first we grab the font metric of the font being used
-  QFontMetrics metric(_f);
   // this allows us to get the height which should be the same for all
   // fonts of the same class as this is the total glyph height
-  int fontHeight=metric.height();
+  float fontHeight=TTF_FontHeight(font);
+
+  std::cerr<<"Font height is "<<fontHeight<<"\n";
 
   // loop for all basic keyboard chars we will use space to ~
-  // should really change this to unicode at some stage
+  // should ngl::Really change this to unicode at some stage
   const static char startChar=' ';
   const static char endChar='~';
   // Most OpenGL cards need textures to be in powers of 2 (128x512 1024X1024 etc etc) so
   // to be safe we will conform to this and calculate the nearest power of 2 for the glyph height
   // we will do the same for each width of the font below
-  unsigned int heightPow2=nearestPowerOfTwo(fontHeight);
+  int heightPow2=nearestPowerOfTwo(fontHeight);
 
   // we are now going to create a texture / billboard for each font
   // they will be the same height but will possibly have different widths
   // as some of the fonts will be the same width, to save VAO space we will only create
   // a vao if we don't have one of the set width. To do this we use the has below
-  std::unordered_map <int,AbstractVAO *> widthVAO;
+  std::unordered_map <int,ngl::AbstractVAO *> widthVAO;
 
   for(char c=startChar; c<=endChar; ++c)
   {
-    QChar ch(c);
     FontChar fc;
     // get the width of the font and calculate the ^2 size
-    int width=metric.width(c);
-    unsigned int widthPow2=nearestPowerOfTwo(width);
+   // TTF_GlyphMetrics(TTF_Font *font, Uint16 ch, int *minx, int *maxx, int *miny, int *maxy, int *advance)
+
+
+    int width;
+    int height;
+    char cc[2];
+    sprintf(cc,"%c",c);
+    // need a null terminated string
+    cc[1]='\0';
+    TTF_SizeText(font,cc,&width,&height);
+    int widthPow2=nearestPowerOfTwo(width);
+	
     // now we set the texture co-ords for our quad it is a simple
     // triangle billboard with tex-cords as shown
     //  s0/t0  ---- s1,t0
@@ -88,94 +98,51 @@ Text::Text( const QFont &_f)  noexcept
     //         | \|
     //  s0,t1  ---- s1,t1
     // each quad will have the same s0 and the range s0-s1 == 0.0 -> 1.0
-    Real s0=0.0;
+    ngl::Real s0=0.0;
     // we now need to scale the tex cord to it ranges from 0-1 based on the coverage
     // of the glyph and not the power of 2 texture size. This will ensure that kerns
     // / ligatures match
-    Real s1=width*1.0f/widthPow2;
+    ngl::Real s1=width*1.0/width; // use this on older machines widthPow2;
     // t0 will always be the same
-    Real t0=0.0f;
+    ngl::Real t0=0.0;
     // this will scale the height so we only get coverage of the glyph as above
-    Real t1=metric.height()*-1.0f/heightPow2;
+    ngl::Real t1=height*1.0/height; // use this on older gpus heightPow2;
     // we need to store the font width for later drawing
     fc.width=width;
-    // now we will create a QImage to store the texture, basically we are going to draw
-    // into the qimage then save this in OpenGL format and load as a texture.
-    // This is relativly quick but should be done as early as possible for max performance when drawing
-    QImage finalImage(nearestPowerOfTwo(width),nearestPowerOfTwo(fontHeight),QImage::Format_ARGB32);
-    // set the background for transparent so we can avoid any areas which don't have text in them
-    finalImage.fill(Qt::transparent);
-    // we now use the QPainter class to draw into the image and create our billboards
-    QPainter painter;
-    painter.begin(&finalImage);
-    // try and use high quality text rendering (works well on the mac not as good on linux)
-    painter.setRenderHints(QPainter::HighQualityAntialiasing
-                   | QPainter::TextAntialiasing);
-    // set the font to draw with
-    painter.setFont(_f);
-    // we set the glyph to be drawn in black the shader will override the actual colour later
-    // see TextShader.h in src/shaders/
-    painter.setPen(Qt::black);
-    // finally we draw the text to the Image
-    painter.drawText(0, metric.ascent(), QString(c));
-    painter.end();
-    // for debug purposes we can save the files as .png and view them
-    // not needed just useful when developing the class/
-    /*
-    QString filename=".png";
-    filename.prepend(c);
-    finalImage.save(filename);
-    */
-
+   
+    SDL_Surface* msg = TTF_RenderText_Blended( font, cc, color );
+    // this is needed on some older machines
+    //SDL_Surface *powerOfTwo=SDL_CreateRGBSurface(0,widthPow2,heightPow2,32,0,0,0,0);
+    //SDL_BlitSurface(msg,NULL,powerOfTwo,NULL);
     // now we create the OpenGL texture ID and bind to make it active
     glGenTextures(1, &fc.textureID);
     glBindTexture(GL_TEXTURE_2D, fc.textureID);
-   // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-   // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
-
-    // QImage has a method to convert itself to a format suitable for OpenGL
-    finalImage=finalImage.convertToFormat(QImage::Format_ARGB32_Premultiplied);
-    // set rgba image data
-    int widthTexture=finalImage.width();
-    int heightTexture=finalImage.height();
-    std::unique_ptr<unsigned char []> data(new unsigned char[ widthTexture*heightTexture * 4]);
-    unsigned int index=0;
-    QRgb colour;
-    for(int y=heightTexture-1; y>0; --y)
-    {
-      for(int x=0; x<widthTexture; ++x)
-      {
-        colour=finalImage.pixel(x,y);
-        data[index++]=static_cast<unsigned char>(qRed(colour));
-        data[index++]=static_cast<unsigned char>(qGreen(colour));
-        data[index++]=static_cast<unsigned char>(qBlue(colour));
-        data[index++]=static_cast<unsigned char>(qAlpha(colour));
-        }
-    }
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, msg->w, msg->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, msg->pixels );
+    //SDL_FreeSurface(powerOfTwo);
+    SDL_FreeSurface(msg);
 
     // the image in in RGBA format and unsigned byte load it ready for later
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, widthTexture, heightTexture,0, GL_RGBA, GL_UNSIGNED_BYTE, data.get());
-    glGenerateMipmap(GL_TEXTURE_2D);
-
+ //   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, widthTexture, heightTexture,0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+ //   delete [] data;
     // see if we have a Billboard of this width already
-    if (widthVAO.find(width) ==widthVAO.end())
+    if (!widthVAO.count(width))
     {
         // this structure is used by the VAO to store the data to be uploaded
         // for drawing the quad
         struct textVertData
         {
-        Real x;
-        Real y;
-        Real u;
-        Real v;
+        ngl::Real x;
+        ngl::Real y;
+        ngl::Real u;
+        ngl::Real v;
         };
         // we are creating a billboard with two triangles so we only need the
         // 6 verts, (could use index and save some space but shouldn't be too much of an
         // issue
-        std::array<textVertData,6> d;
+        textVertData d[6];
         // load values for triangle 1
         d[0].x=0;
         d[0].y=0;
@@ -211,11 +178,11 @@ Text::Text( const QFont &_f)  noexcept
 
 
         // now we create a VAO to store the data
-        AbstractVAO *vao=VAOFactory::createVAO("simpleVAO",GL_TRIANGLES);
+        ngl::AbstractVAO *vao=ngl::VAOFactory::createVAO("simpleVAO",GL_TRIANGLES);
         // bind it so we can set values
         vao->bind();
         // set the vertex data (2 for x,y 2 for u,v)
-        vao->setData(SimpleVAO::VertexData(6*sizeof(textVertData),d[0].x));
+        vao->setData(ngl::SimpleVAO::VertexData(6*sizeof(textVertData),d[0].x));
         // now we set the attribute pointer to be 0 (as this matches vertIn in our shader)
         vao->setVertexAttributePointer(0,2,GL_FLOAT,sizeof(textVertData),0);
         // We can now create another set of data (which will be added to the VAO)
@@ -228,7 +195,7 @@ Text::Text( const QFont &_f)  noexcept
         // now unbind
         vao->unbind();
         // store the vao pointer for later use in the draw method
-        fc.vao =vao;
+        fc.vao=vao;
         widthVAO[width]=vao;
     }
     else
@@ -237,12 +204,13 @@ Text::Text( const QFont &_f)  noexcept
     }
     // finally add the element to the map, this must be the last
     // thing we do
-    m_characters[c]=std::move(fc);
+    m_characters[c]=fc;
   }
   std::cout<<"created "<<widthVAO.size()<<" unique billboards\n";
   // set a default colour (black) incase user forgets
   this->setColour(0,0,0);
-  this->setTransform(1.0,1.0);
+  setTransform(1.0,1.0);
+  
 }
 
 
@@ -250,25 +218,30 @@ Text::Text( const QFont &_f)  noexcept
 Text::~Text()
 {
   // our dtor should clear out the textures and remove the VAO's
-  for( auto &m : m_characters)
+ /* foreach( FontChar m, m_characters)
   {
     glDeleteTextures(1,&m.textureID);
-    m.vao->removeVAO();
+    m.vao->removeVOA();
   }
-
+*/
 }
 
 
 
 
 //---------------------------------------------------------------------------
-void Text::renderText( float _x, float _y,  const QString &text ) const noexcept
+void Text::renderText( float _x, float _y,  const std::string &text ) const
 {
   // make sure we are in texture unit 0 as this is what the
   // shader expects
   glActiveTexture(GL_TEXTURE0);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   // grab an instance of the shader manager
-  ShaderLib *shader=ShaderLib::instance();
+  ngl::ShaderLib *shader=ngl::ShaderLib::instance();
   // use the built in text rendering shader
   (*shader)["nglTextShader"]->use();
   // the y pos will always be the same so set it once for each
@@ -280,22 +253,26 @@ void Text::renderText( float _x, float _y,  const QString &text ) const noexcept
   glDisable(GL_DEPTH_TEST);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   // now loop for each of the char and draw our billboard
-  int textLength=text.length();
+  unsigned int textLength=text.length();
 
-  for ( int i = 0; i < textLength; ++i)
+  for (unsigned int i = 0; i < textLength; ++i)
   {
     // set the shader x position this will change each time
     // we render a glyph by the width of the char
     shader->setUniform("xpos",_x);
     // so find the FontChar data for our current char
 //    FontChar f = m_characters[text[i].toAscii()];
-    FontChar f = m_characters[text[i].toLatin1()];
-
+//    FontChar f = m_characters[text[i]];
+  std::unordered_map <char,FontChar>::const_iterator currentchar=m_characters.find(text[i]);
+  // make sure we have a valid shader
+  if(currentchar!=m_characters.end())
+  {
+	FontChar f=currentchar->second;
     // bind the pre-generated texture
     glBindTexture(GL_TEXTURE_2D, f.textureID);
     // bind the vao
     f.vao->bind();
-    // draw
+    // draw 
     f.vao->draw();
     // now unbind the vao
     f.vao->unbind();
@@ -303,6 +280,7 @@ void Text::renderText( float _x, float _y,  const QString &text ) const noexcept
     // by the width of the char just drawn
     _x+=f.width;
 
+  }	
   }
   // finally disable the blend and re-enable depth sort
   glDisable(GL_BLEND);
@@ -311,7 +289,7 @@ void Text::renderText( float _x, float _y,  const QString &text ) const noexcept
 }
 
 //---------------------------------------------------------------------------
-void Text::setScreenSize(int _w, int _h ) noexcept
+void Text::setScreenSize(int _w, int _h )
 {
 
   float scaleX=2.0f/_w;
@@ -321,9 +299,9 @@ void Text::setScreenSize(int _w, int _h ) noexcept
   // gl_Position=vec4( ((xpos+inVert.x)*scaleX)-1,((ypos+inVert.y)*scaleY)+1.0,0.0,1.0); "
   // so all we need to do is calculate the scale above and pass to shader every time the
   // screen dimensions change
-  ShaderLib *shader=ShaderLib::instance();
+  ngl::ShaderLib *shader=ngl::ShaderLib::instance();
   (*shader)["nglTextShader"]->use();
-
+  std::cout<<"scaleX "<<scaleX <<" "<<scaleY<<"\n";
   shader->setUniform("scaleX",scaleX);
   shader->setUniform("scaleY",scaleY);
 }
@@ -337,10 +315,10 @@ void Text::setScreenSize(int _w, int _h ) noexcept
 // fragColour.rgb=textColour.rgb;
 // fragColour.a=text.a;
 
-void Text::setColour(const Colour &_c ) noexcept
+void Text::setColour(const ngl::Colour &_c )
 {
   // get shader instance
-  ShaderLib *shader=ShaderLib::instance();
+  ngl::ShaderLib *shader=ngl::ShaderLib::instance();
   // make current shader active
   (*shader)["nglTextShader"]->use();
   // set the values
@@ -349,25 +327,23 @@ void Text::setColour(const Colour &_c ) noexcept
 
 
 //---------------------------------------------------------------------------
-void Text::setColour(Real _r,  Real _g, Real _b) noexcept
+void Text::setColour(ngl::Real _r,  ngl::Real _g, ngl::Real _b)
 {
 
-  ShaderLib *shader=ShaderLib::instance();
+  ngl::ShaderLib *shader=ngl::ShaderLib::instance();
   (*shader)["nglTextShader"]->use();
 
   shader->setUniform("textColour",_r,_g,_b);
 }
 
-void Text::setTransform(float _x, float _y) noexcept
+void Text::setTransform(float _x, float _y)
 {
 
-  ShaderLib *shader=ShaderLib::instance();
+  ngl::ShaderLib *shader=ngl::ShaderLib::instance();
   (*shader)["nglTextShader"]->use();
 
   shader->setUniform("transform",_x,_y);
 }
 
-
-} //end namespace
 //---------------------------------------------------------------------------
 

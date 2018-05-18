@@ -5,6 +5,17 @@
 #include <ngl/Camera.h>
 #include <SDL_rect.h>
 
+// a struct to hold information about a currently active effect
+struct Effect
+{
+  // a timer to display the colored effect (eg. red damage blink)
+  int m_timer;
+  bool m_display;
+  bool m_damaged;
+  ngl::Vec4 m_color;
+};
+
+// a class for our ship
 class Ship
 {
 public:
@@ -21,20 +32,19 @@ public:
   inline ngl::Vec3 getPos() const {return m_position;}
   inline void setX(float _x) { m_position.m_x = _x; }
   inline void setZ(float _z) { m_position.m_z = _z; }
-
+  void setEffect(int _time, bool _damaged);
   bool m_state;
-  // a timer to display the red damage blink
-  int m_damageTimer;
+
   // the radius for the collision bounds sphere
   const float c_sphere = 0.5f;
 
 private:
   // current position of the ship
-  ngl::Vec3 m_position;
+  ngl::Vec3     m_position;
   // the step size for movement
-  const float c_step = 0.5f;
-  // flags whether the ship is displaying damage
-  bool m_damaged;
+  const float   c_step = 0.5f;
+  // holds info about any currently active effect
+  Effect m_effect;
   // a rect for the player movement area bounds
   SDL_Rect m_moveBounds;
   // a pointer for the mesh data of the ship

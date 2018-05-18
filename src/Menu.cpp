@@ -19,7 +19,7 @@ Button::Button(const char *_label, int _size)
   // set parameters for textRect
   m_textRect.x = m_buttonSpacing;
   m_textRect.y = m_buttonSpacing;
-  TTF_SizeText(m_textFont,"hello",&m_textRect.w,&m_textRect.h);
+  TTF_SizeText(m_textFont,_label,&m_textRect.w,&m_textRect.h);
 
   // set parameters for borderRect
   m_borderRect.w = m_textRect.w+m_buttonSpacing*2;
@@ -34,32 +34,34 @@ Button::Button(const char *_label, int _size)
 
 }
 
-Button::Button(const char *_label, SDL_Renderer *_renderer)
+Button::Button(const char *_label, SDL_Renderer *_renderer, int _size)
 {
-  //set textFont
-  m_textFont = TTF_OpenFont("font/game_over.ttf",70);
-  //set buttonSpacing
+  // set textFont
+  m_textFont = TTF_OpenFont("font/game_over.ttf", _size);
+  // set buttonSpacing
   m_buttonSpacing = 0;
 
-  //set parameters for textRect
+  // set parameters for textRect
   m_textRect.x = m_buttonSpacing;
   m_textRect.y = m_buttonSpacing;
-  TTF_SizeText(m_textFont,"hello",&m_textRect.w,&m_textRect.h);
+  TTF_SizeText(m_textFont,_label,&m_textRect.w,&m_textRect.h);
 
-  //set parameters for borderRect
+  // set parameters for borderRect
   m_borderRect.w = m_textRect.w+m_buttonSpacing*2;
   m_borderRect.h = m_textRect.h+m_buttonSpacing*2;
   m_borderRect.x = 0;
   m_borderRect.y = 0;
 
-  //set textColor
+  // set textColor
   m_textColor = {225,128,0,225};
-  //render text on textSurface
+  // render text on textSurface
   m_textSurface = TTF_RenderText_Solid(m_textFont,_label, m_textColor);
 
-  //convert the textSurface to a texture
+  // convert the textSurface to a texture
   m_buttonTexture = SDL_CreateTextureFromSurface(_renderer, m_textSurface);
-  SDL_FreeSurface(m_textSurface);     //free the no longer needed textSurface
+
+  // free the no longer needed surface
+  SDL_FreeSurface(m_textSurface);
 
 }
 
@@ -67,7 +69,6 @@ Button::~Button()
 {
   //m_functPtr = NULL;
   // free the surface
-  //SDL_FreeSurface(m_textSurface);
 }
 
 void Button::setTexture(SDL_Renderer *_renderer)
@@ -82,11 +83,15 @@ void Button::setPosition(int _x, int _y, bool _centered)
   {
     m_borderRect.x = _x-(m_borderRect.w/2);
     m_borderRect.y = _y-(m_borderRect.h/2);
+    m_textRect.x = _x-(m_textRect.w/2);
+    m_textRect.y = _y-(m_textRect.h/2);
   }
   else
   {
     m_borderRect.x = _x;
     m_borderRect.y = _y;
+    m_textRect.x = _x;
+    m_textRect.y = _y;
   }
 }
 
@@ -109,7 +114,7 @@ bool Button::isInside(int _mouseX, int _mouseY)
 
 MainMenu::MainMenu(SDL_Renderer *_renderer, SDL_Rect _windowRect)
 {
-  m_playButton = Button("PLAY", _renderer);
+  m_playButton = Button("PLAY", _renderer,200);
   m_playButton.setPosition(_windowRect.w/2, _windowRect.h/2, true);
 }
 

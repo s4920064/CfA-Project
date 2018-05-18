@@ -11,14 +11,17 @@ class Button
 public:
   //rectangle border of the button. In public because we will use these values to blit the button onto the final menu texture and to determine if button is clicked in main event loop
   SDL_Rect m_borderRect;
+  // rectangle border of the bare text
+  SDL_Rect m_textRect;
 
   Button();
   Button(const char *_label, int _size);
-  Button(const char *_label, SDL_Renderer *_renderer);
+  Button(const char *_label, SDL_Renderer *_renderer, int _size);
   ~Button();
   void setTexture(SDL_Renderer *_renderer);
   inline SDL_Texture *getTexture() { return m_buttonTexture; }
   inline SDL_Surface *getSurface() { return m_textSurface; }
+  inline TTF_Font *getFont() { return m_textFont; }
   void setPosition(int _x, int _y, bool _centered);   //set position of button (will edit borderRect)
   bool isInside(int _mouseX, int _mouseY);            //check if mouse position is within button borders
 
@@ -30,8 +33,6 @@ private:
   SDL_Surface *m_textSurface;
   // the texture that will be used in the menus
   SDL_Texture *m_buttonTexture;
-  // rectangle border of the bare text
-  SDL_Rect m_textRect;
   // color of the button label text
   SDL_Color m_textColor;
   // font of the button label text
@@ -45,8 +46,8 @@ public:
 //  Menu();
 //  ~Menu();
 protected:
-  SDL_Color m_backColor = {100,100,100,225};                // background color
-  SDL_Color m_buttonColor = {255, 165, 0, 255};
+  SDL_Color m_backColor = {11,11,11,225};                // background color
+  SDL_Color m_buttonColor = {11, 11, 11, 255};
 };
 
 // Main Menu class

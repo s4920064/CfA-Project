@@ -11,7 +11,7 @@
 #include <ngl/NGLStream.h>
 #include <SDL2/SDL_rect.h>
 #include <algorithm>
-#include <SDL_ttf.h>
+#include <SDL2/SDL_ttf.h>
 
 Game::Game(int _h)
 {
@@ -21,7 +21,7 @@ Game::Game(int _h)
 
   // set the time and score to zero, and lives to full
   m_time = 0;
-  m_score = 0;
+  m_score.m_score = 0;
   m_lives = 3.0;
 
   // set the clear color to dark grey
@@ -65,11 +65,12 @@ Game::Game(int _h)
   prim->createTrianglePlane("plane",2,2,1,1,ngl::Vec3(0,1,0));
   ///---------------------------------------------
 
-  ///------------------The Ship-------------------
-  shader->loadShader("Ship",
+  // load the shader that will be used to draw the ship and projectiles
+  shader->loadShader("Diffuse",
                      "shaders/ShipVertex.glsl",
                      "shaders/ShipFragment.glsl");
 
+  ///------------------The Ship-------------------
   // set the bounds rectangle
   m_moveBounds.w = 4;
   m_moveBounds.h = 6;
@@ -88,16 +89,22 @@ Game::Game(int _h)
   ///---------------------------------------------
 
   ///---------------The Projectiles---------------
-  shader->loadShader("Projectile",
-                     "shaders/ProjectileVertex.glsl",
-                     "shaders/ProjectileFragment.glsl");
+//  shader->loadShader("Projectile",
+//                     "shaders/ProjectileVertex.glsl",
+//                     "shaders/ProjectileFragment.glsl");
 
-  // the mesh
-  m_projectileMesh = new ngl::Obj("models/Missile.obj");
-  m_projectileMesh->createVAO();
+  // load the meshes
+  m_missileMesh = new ngl::Obj("models/Missile.obj");
+  m_missileMesh->createVAO();
+  m_obstacleMesh = new ngl::Obj("models/Obstacle.obj");
+  m_obstacleMesh->createVAO();
+  m_bonusMesh = new ngl::Obj("models/Bonus.obj");
+  m_bonusMesh->createVAO();
 
   // set the number of active projectiles to zero
-  m_activeProjectiles = 0;
+  m_activeMissiles = 0;
+  m_activeObstacles = 0;
+  m_activeBonuses = 0;
   ///---------------------------------------------
 
   ///-------------The Game Environment------------
@@ -111,6 +118,9 @@ Game::Game(int _h)
   m_gameEnv = new GameEnv(/* "textures/Background.jpg" */);
   ///---------------------------------------------
 
+//  m_text = new Text("font/game_over.ttf",100);
+//  m_text->setColour(1.0,0.0,0.0);
+
   //m_text.resetnew ngl::Text(*m_font);
   //m_text->setScreenSize(m_width,m_height);
   //m_text->setColour(1,1,1);
@@ -123,7 +133,9 @@ Game::~Game()
   // free the slaves, i mean the memory
   delete m_camera;
   delete m_shipMesh;
-  delete m_projectileMesh;
+  delete m_missileMesh;
+  delete m_obstacleMesh;
+  delete m_bonusMesh;
   delete m_ship;
   delete m_gameEnv;
   //delete m_text;
@@ -135,6 +147,8 @@ void Game::resize(int _h)
   // keeping a constant w/h ratio
   m_width = int(float(_h)*1.5f);
   m_height = _h;
+
+//  m_text->setScreenSize(m_width,m_height);
 
   glViewport(0,0,m_width,m_height);
   // now set the camera size values as the screen size has changed
@@ -171,12 +185,12 @@ void Game::draw()
   m_ship->draw(m_camera);
 
   /// ---Draw the Projectiles---
-  std::list <Projectile>::iterator i;
-  std::list <Projectile>::iterator end=m_projectiles.end();
+  std::list <Projectile *>::iterator p;
+  std::list <Projectile *>::iterator end=m_projectiles.end();
 
-  for(i = m_projectiles.begin(); i != end; i++)
+  for(p = m_projectiles.begin(); p != end; p++)
   {
-    i->draw(m_camera);
+    (*p)->draw(m_camera);
     //std::cout<< "drawing a projectile!!!!\n";
   }
 
@@ -192,7 +206,7 @@ void Game::draw()
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glViewport(0,0,m_width,m_height);
 
-  // BottleFront texture bind
+  // Game texture bind
   glActiveTexture(GL_TEXTURE3);
   glBindTexture(GL_TEXTURE_2D, m_fboGameTexId);
 
@@ -200,8 +214,14 @@ void Game::draw()
   glActiveTexture(GL_TEXTURE4);
   glBindTexture(GL_TEXTURE_2D, m_fboGameDepthId);
 
+  glActiveTexture(GL_TEXTURE5);
+  glBindTexture(GL_TEXTURE_2D, m_fboMaskTexId);
+
   glActiveTexture(GL_TEXTURE6);
   glBindTexture(GL_TEXTURE_2D, m_fboTextTexId);
+
+  glActiveTexture(GL_TEXTURE7);
+  glBindTexture(GL_TEXTURE_2D, m_fboNumTexId);
 
   // grab an instance of the shader manager
   ngl::ShaderLib *shader=ngl::ShaderLib::instance();
@@ -214,8 +234,12 @@ void Game::draw()
   glUniform1i(glGetUniformLocation(pid, "depthTex"), 4);
   glUniform1i(glGetUniformLocation(pid, "textTex"), 6);
   glUniform1i(glGetUniformLocation(pid, "maskTex"), 5);
+  glUniform1i(glGetUniformLocation(pid, "numTex"), 7);
   glUniform2f(glGetUniformLocation(pid, "windowSize"), m_width, m_height);
-  glUniform2f(glGetUniformLocation(pid, "textSize"), m_textSurface.m_x, m_textSurface.m_y);
+  glUniform2f(glGetUniformLocation(pid, "scorePlacement"), m_score.m_scoreRect.x, m_score.m_scoreRect.y);
+  glUniform2f(glGetUniformLocation(pid, "numDimensions"), m_score.m_scoreRect.w, m_score.m_scoreRect.h);
+  glUniform1i(glGetUniformLocation(pid, "scoreLength"), SCORELENGTH);
+  glUniform1iv(glGetUniformLocation(pid, "score"), SCORELENGTH, m_score.m_scoreArray);
 
   // set the MVP for the plane
   glm::mat4 MVP = glm::rotate(glm::mat4(1.0f), glm::pi<float>() * 0.5f, glm::vec3(1.0f,0.0f,0.0f));
@@ -223,6 +247,7 @@ void Game::draw()
 
   // Grab and instance of the VAO primitives path
   ngl::VAOPrimitives *prim=ngl::VAOPrimitives::instance();
+
   // draw the plane
   prim->draw("plane");
 
@@ -231,91 +256,198 @@ void Game::draw()
 
 }
 
+// this function is based off of the algorithm by Broam in https://stackoverflow.com/questions/1860983/convert-integer-to-array
+bool intToArray(int _integer, int _length, int _array[SCORELENGTH])
+{
+  if(_length==0)
+  {
+    return true;
+  }
+  else
+  {
+    _array[_length-1] = _integer%10;
+    intToArray(_integer/10,_length-1, _array);
+  }
+}
+
+// calculates the loop cycle period where a projectile will spawn
+// to make the spawning a little more unpredictable, give it a random range
+int Game::getSpawnCycle(int initialPeriod, int initialRandRange)
+{
+  // a random value between the positive and negative initial random range
+  int initialRand = rand() % (initialRandRange*2) - initialRandRange;
+  int spawnPeriod = int((initialPeriod+initialRand)/(float(m_time)/300));
+  if(spawnPeriod<initialRandRange+10)
+  {
+    return initialRandRange+10;
+  }
+  else
+  {
+    return spawnPeriod;
+  }
+}
+
 void Game::update()
 {
-  m_time++;
-
-  m_score = m_time / 40;
-  //std::cout<< m_score << "\n";
-
-  ///---------------Spawn Projectiles-------------
-  // every 80 cycles
-  if(m_time % 80 == 0)
+  if(m_lives>0)
   {
-    // generate a random floating point value within the horizontal movebounds area
-    float randX = float(rand() % (m_moveBounds.w*10))/10 + m_moveBounds.x;
-    // create a new projectile at that point with speed 0.5
-    Projectile *p = new Projectile( ngl::Vec3(randX,0,-100), 0.5f, m_projectileMesh);
-    // push it onto the list of projectiles
-    m_projectiles.push_back(*p);
-    // increment the number of active projectiles
-    ++m_activeProjectiles;
-  }
-  ///---------------------------------------------
+    m_time++;
 
-  ///-------Update Projectiles and Collision------
-  // iterator for the list of projectiles
-  std::list <Projectile>::iterator p;
-  std::list <Projectile>::iterator end=m_projectiles.end();
-
-  // for every active projectile i
-  for(p = m_projectiles.begin(); p != end; p++)
-  {
-    // update the projectile
-    p->update(m_moveBounds.y, m_ship->c_sphere);
-
-    // if it is active
-    if(p->isActive())
+    m_score.m_score = m_time / 40;
+    if(!intToArray(m_score.m_score,SCORELENGTH,m_score.m_scoreArray))
     {
-      // if it is a threat
-      if(p->isThreat())
+      std::cout<<"Recursive intToArray() function failed!\n";
+    }
+
+    //std::cout<< m_score.m_scoreArray[0]<<m_score.m_scoreArray[1]<<m_score.m_scoreArray[2]<< "\n";
+
+    ///---------------Spawn Projectiles-------------
+
+    /// Spawn Missiles
+    // every ~80(+-15) cycles
+    if(m_time % getSpawnCycle(80,15) == 0)
+    {
+      // generate a random floating point value within the horizontal movebounds area
+      float randX = float(rand() % (m_moveBounds.w*10))/10 + m_moveBounds.x;
+      // create a new missile at that point with speed 0.5
+      Missile *m = new Missile( ngl::Vec3(randX,0,-100), 0.5f, m_missileMesh);
+      // push it onto the list of projectiles
+      m_projectiles.push_back(m);
+      // increment the number of active projectiles
+      ++m_activeProjectiles;
+    }
+
+    /// Spawn Obstacles
+    // every ~160 cycles
+    if(m_time % getSpawnCycle(160,30) == 0)
+    {
+      // generate a random floating point value within the horizontal movebounds area
+      float randX = float(rand() % (m_moveBounds.w*10))/10 + m_moveBounds.x;
+      // create a new obstacle at that point with speed 0.5
+      Obstacle *m = new Obstacle( ngl::Vec3(randX,0,-100), 0.5f, m_obstacleMesh);
+      // push it onto the list of projectiles
+      m_projectiles.push_back(m);
+      // increment the number of active projectiles
+      ++m_activeProjectiles;
+    }
+
+    /// Spawn Bonuses
+    // every 200 cycles
+    if(m_time % getSpawnCycle(200,30) == 0)
+    {
+      // generate a random floating point value within the horizontal movebounds area
+      float randX = float(rand() % (m_moveBounds.w*10))/10 + m_moveBounds.x;
+      // create a new bonus at that point with speed 0.5
+      Bonus *b = new Bonus( ngl::Vec3(randX,0,-100), 0.5f, m_bonusMesh);
+      // push it onto the list of projectiles
+      m_projectiles.push_back(b);
+      // increment the number of active projectiles
+      ++m_activeProjectiles;
+    }
+    ///---------------------------------------------
+
+    ///-------Update Projectiles and Collision------
+    // iterator for the list of missiles
+    std::list <Projectile *>::iterator p;
+    std::list <Projectile *>::iterator end=m_projectiles.end();
+
+    // for every active projectile p
+    for(p = m_projectiles.begin(); p != end; p++)
+    {
+      // update the projectile
+      (*p)->update(m_moveBounds.y, m_ship->c_sphere);
+
+      // if it is active
+      if((*p)->isActive())
       {
-        // distance between the ship and the projectile in question
-        float distance = sqrt( pow(p->m_position.m_x - m_ship->getPos().m_x, 2.0f) +
-                               pow(p->m_position.m_z - m_ship->getPos().m_z, 2.0f) );
-        // if there is a collision between the projectile and the ship
-        if(distance < p->c_sphere + m_ship->c_sphere)
+        // if it is a threat
+        if((*p)->isThreat())
         {
-          // if they are different states
-          if(p->m_state != m_ship->m_state)
+          // distance between the ship and the projectile in question
+          float distance = sqrt( pow((*p)->m_position.m_x - m_ship->getPos().m_x, 2.0f) +
+                                 pow((*p)->m_position.m_z - m_ship->getPos().m_z, 2.0f) );
+          // if there is a collision between the projectile and the ship
+          if(distance < (*p)->c_sphere + m_ship->c_sphere)
           {
-            // then remove one full life
-            m_lives -= 1.0;
 
-            // start the ship damage timer
-            m_ship->m_damageTimer = 40;
+            // if the projectile is a bonus
+            if(strcmp((*p)->getType(),"bonus")==0)
+            {
+              // if they are the same state
+              if((*p)->m_state == m_ship->m_state)
+              {
+                // then add one full life
+                m_lives += 1.0;
+
+                // start the ship health timer
+                m_ship->setEffect(10,false);
+
+                // then erase the projectile from the list
+                m_projectiles.erase(p++);
+              }
+            }
+
+            else
+            {
+              // if the projectile is a missile
+              if(strcmp((*p)->getType(),"missile")==0)
+              {
+                // if they are different states
+                if((*p)->m_state != m_ship->m_state)
+                {
+                  // then remove one full life
+                  m_lives -= 1.0;
+
+                  // start the ship damage timer
+                  m_ship->setEffect(40,true);
+                }
+                // if they are of the same state then add a bit of life
+                else
+                {
+                  m_lives += 0.1;
+                  // start the ship health timer
+                  m_ship->setEffect(10,false);
+                }
+              }
+
+              // if the projectile is an obstacle
+              if(strcmp((*p)->getType(),"obstacle")==0)
+              {
+                // then remove one full life
+                m_lives -= 1.0;
+
+                // start the ship damage timer
+                m_ship->setEffect(40,true);
+              }
+
+              // then erase the projectile from the list
+              m_projectiles.erase(p++);
+            }
+
           }
-          // if they are of the same state then add a bit of life
-          else { m_lives += 0.1; }
-
-          // erase the projectile from the list
-          m_projectiles.erase(p++);
         }
       }
+      // if it is not active, erase it from the list
+      else {m_projectiles.erase(p++);}
     }
-    // if it is not active, erase it from the list
-    else {m_projectiles.erase(p++);}
+
+    // update the size of the active projectiles
+    m_activeProjectiles=m_projectiles.size();
+    ///---------------------------------------------
+
+    ///----------------Update GameEnv---------------
+    m_gameEnv->update(0.2);
+    ///---------------------------------------------
+
+    ///-----------------Update Ship-----------------
+    m_ship->update();
+    ///---------------------------------------------
   }
-
-  // update the size of the active projectiles
-  m_activeProjectiles=m_projectiles.size();
-  ///---------------------------------------------
-
-  ///----------------Update GameEnv---------------
-  m_gameEnv->update(0.2);
-  ///---------------------------------------------
-
-  ///-----------------Update Ship-----------------
-  m_ship->update();
-  ///---------------------------------------------
 }
 
 void Game::move(float _x, float _z)
 {
-//  m_ship->forward(_z);
-//  m_ship->backward(_z);
-//  m_ship->left(_x);
-//  m_ship->right(_x);
+
   // if the new position won't be past the top and bottom side of the bounds rect
   float shipZ = m_ship->getPos().m_z;
   if(shipZ + _z > m_moveBounds.y && shipZ + _z < m_moveBounds.y + m_moveBounds.h )
@@ -327,6 +459,8 @@ void Game::move(float _x, float _z)
   { m_ship->setX(shipX+_x); }
 
 }
+
+// following code based off of the exercises by Richard Southern
 void Game::initFBO()
 {
   // First delete the FBO if it has been created previously
@@ -339,7 +473,7 @@ void Game::initFBO()
   }
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-  // The BottleFront pass is rendered to a texture buffer
+  // The game pass is rendered to a texture buffer
   glGenTextures(1, &m_fboGameTexId);
   glActiveTexture(GL_TEXTURE3);
   glBindTexture(GL_TEXTURE_2D, m_fboGameTexId);
@@ -356,7 +490,7 @@ void Game::initFBO()
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glBindTexture(GL_TEXTURE_2D, 0);
 
-  // The depth buffer is rendered to a texture buffer too
+  // The depth pass is rendered to a texture buffer too
   glGenTextures(1, &m_fboGameDepthId);
   glActiveTexture(GL_TEXTURE4);
   glBindTexture(GL_TEXTURE_2D, m_fboGameDepthId);
@@ -374,10 +508,9 @@ void Game::initFBO()
   glBindTexture(GL_TEXTURE_2D, 0);
 
   ///-----------------Generate GameScreen UI Surface-----------------
-
   // create a surface the size of the screen and fill it with a background color
-  SDL_Surface* textSurface = SDL_CreateRGBSurface(0, m_width, m_height, 32, 0,0,0,1);
-  SDL_FillRect(textSurface,NULL,SDL_MapRGB(textSurface->format, 11, 11, 11));
+  SDL_Surface* screenSurface = SDL_CreateRGBSurface(0, m_width, m_height, 32, 0,0,0,1);
+  SDL_FillRect(screenSurface,NULL,SDL_MapRGB(screenSurface->format, 11, 11, 11));
 
   ngl::Vec2 gameSize = ngl::Vec2(0.55,0.9);
   float border = 0.05f;
@@ -388,28 +521,23 @@ void Game::initFBO()
   gameViewport.x = int(border*m_width);
   gameViewport.y = int(border*m_height);
 
-  // create a surfabce the size of the game viewport and fill it black
+  // create a surface the size of the game viewport (this will be a mask) and fill it black
   SDL_Surface* maskSurface = SDL_CreateRGBSurface(0, gameViewport.w, gameViewport.h, 32, 0,0,0,1);
   SDL_FillRect(maskSurface,NULL,SDL_MapRGB(maskSurface->format, 0, 0, 0));
 
   // create some text from our Button class and save the surface
-  Button score = Button("SCORE", 100);
-  SDL_Surface *scoreSurface = score.getSurface();
-
-  // same thing, only this text will display the actual score
-  Button scoreNum = Button(std::to_string(m_score).c_str(), 100);
-  SDL_Surface *scoreNumSurface = scoreNum.getSurface();
+  Button scoreText = Button("SCORE", 100);
+  SDL_Surface *scoreSurface = scoreText.getSurface();
 
   // set the positions of the different text surfaces within the area of the screen
-  score.setPosition(m_width-m_width/6, m_height/6, true);
-  scoreNum.setPosition(m_width-m_width/6, (m_height/8)*2, true);
+  scoreText.setPosition(m_width-m_width/5, m_height/7, true);
 
   // blit the text surfaces onto our screen-sized surface
-  SDL_BlitSurface(maskSurface, NULL, textSurface, &gameViewport);
-  SDL_BlitSurface(scoreSurface, NULL, textSurface, &score.m_borderRect);
-  SDL_BlitSurface(scoreNumSurface, NULL, textSurface, &scoreNum.m_borderRect);
+  SDL_BlitSurface(maskSurface, NULL, screenSurface, &gameViewport);
+  SDL_BlitSurface(scoreSurface, NULL, screenSurface, &scoreText.m_textRect);
   ///-------------------------------------------------------
 
+  ///-----------------Text-----------------
   // render the SDL_Surface containing our text to a texture buffer
   glGenTextures(1, &m_fboTextTexId);
   glActiveTexture(GL_TEXTURE6);
@@ -417,42 +545,162 @@ void Game::initFBO()
   glTexImage2D(GL_TEXTURE_2D,
                0,
                GL_RGBA,
-               textSurface->w,
-               textSurface->h,
+               screenSurface->w,
+               screenSurface->h,
                0,
                GL_BGRA_EXT,
                GL_UNSIGNED_BYTE,
-               textSurface->pixels);
+               screenSurface->pixels);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glBindTexture(GL_TEXTURE_2D, 0);
+  ///---------------------------------------
 
-
-  SDL_FillRect(textSurface,NULL,SDL_MapRGB(textSurface->format, 0, 0, 0));
+  ///-----------------Mask-----------------
+  SDL_FillRect(screenSurface,NULL,SDL_MapRGB(screenSurface->format, 0, 0, 0));
   SDL_FillRect(maskSurface,NULL,SDL_MapRGB(maskSurface->format, 255, 255, 255));
-  SDL_BlitSurface(maskSurface, NULL, textSurface, &gameViewport);
+  SDL_BlitSurface(maskSurface, NULL, screenSurface, &gameViewport);
 
-  // render the SDL_Surface containing our text to a texture buffer
+  // render the SDL_Surface containing our mask to a texture buffer
   glGenTextures(1, &m_fboMaskTexId);
   glActiveTexture(GL_TEXTURE5);
   glBindTexture(GL_TEXTURE_2D, m_fboMaskTexId);
   glTexImage2D(GL_TEXTURE_2D,
                0,
                GL_RGBA,
-               textSurface->w,
-               textSurface->h,
+               screenSurface->w,
+               screenSurface->h,
                0,
                GL_BGRA_EXT,
                GL_UNSIGNED_BYTE,
-               textSurface->pixels);
+               screenSurface->pixels);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glBindTexture(GL_TEXTURE_2D, 0);
+  ///---------------------------------------
+
+  ///-----------------Life Bars-----------------
+  // fill the screenSurface black
+  SDL_FillRect(screenSurface,NULL,SDL_MapRGB(screenSurface->format, 0, 0, 0));
+
+  // create a surface for every life and blit it to the screenSurface
+  for(int i; i<m_lives; i++)
+  {
+    SDL_Rect lifeRect;
+    lifeRect.w = 500;
+    lifeRect.h = 300;
+    lifeRect.x = m_width-m_width/5;
+    // each position will be lower than the last
+    lifeRect.y = m_height/2+(lifeRect.h+50)*i;
+    // create the SDL_Surface for the life bar and fill it green
+    SDL_Surface* lifeSurface = SDL_CreateRGBSurface(0, lifeRect.w, lifeRect.h, 32, 0,0,0,1);
+    SDL_FillRect(lifeSurface,NULL,SDL_MapRGB(lifeSurface->format, 0, 255, 0));
+    // blit it to the screenSurface
+    SDL_BlitSurface(lifeSurface, NULL, screenSurface, &gameViewport);
+    // free the lifeSurface, since it was created locally
+    SDL_FreeSurface(lifeSurface);
+  }
+
+  // render the SDL_Surface containing our life bars to a texture buffer
+  glGenTextures(1, &m_fboLifeTexId);
+  glActiveTexture(GL_TEXTURE8);
+  glBindTexture(GL_TEXTURE_2D, m_fboLifeTexId);
+  glTexImage2D(GL_TEXTURE_2D,
+               0,
+               GL_RGBA,
+               screenSurface->w,
+               screenSurface->h,
+               0,
+               GL_BGRA_EXT,
+               GL_UNSIGNED_BYTE,
+               screenSurface->pixels);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  ///---------------------------------------
+
+  ///-----------------Game Over-----------------
+  // fill our screen with a light grey (we will be blending with multiply later on)
+  SDL_FillRect(screenSurface,NULL,SDL_MapRGB(screenSurface->format, 200, 200, 200));
+
+  Button gameOverButton = Button("GAME OVER",200);
+  SDL_Surface *gameOverSurface = gameOverButton.getSurface();
+  gameOverButton.setPosition(m_width/2,m_height/2,true);
+
+
+
+  SDL_FillRect(maskSurface,NULL,SDL_MapRGB(maskSurface->format, 255, 255, 255));
+  SDL_BlitSurface(maskSurface, NULL, screenSurface, &gameViewport);
+
+  // render the SDL_Surface containing our mask to a texture buffer
+  glGenTextures(1, &m_fboGameOverTexId);
+  glActiveTexture(GL_TEXTURE9);
+  glBindTexture(GL_TEXTURE_2D, m_fboGameOverTexId);
+  glTexImage2D(GL_TEXTURE_2D,
+               0,
+               GL_RGBA,
+               screenSurface->w,
+               screenSurface->h,
+               0,
+               GL_BGRA_EXT,
+               GL_UNSIGNED_BYTE,
+               screenSurface->pixels);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  ///---------------------------------------
+
+
+  ///-----------------Score Numbers-----------------
+  // create some text displaying all digits and store it in an SDL_Surface
+  Button numbers = Button(" 0  1  2  3  4  5  6  7  8  9 ", 100);
+  SDL_Surface *numberSurface = numbers.getSurface();
+
+  // set the score number placement
+  m_score.m_scoreRect.x = scoreText.m_textRect.x;
+  m_score.m_scoreRect.y = scoreText.m_textRect.y+m_height/10;
+
+  // set the position of the numbers to the top-left corner
+  numbers.setPosition(0, 0, false);
+
+  // give the screen surface the background color
+  SDL_FillRect(screenSurface,NULL,SDL_MapRGB(screenSurface->format, 11, 11, 11));
+  SDL_BlitSurface(numberSurface, NULL, screenSurface, &numbers.m_textRect);
+
+  // set the score number dimensions
+  TTF_SizeText(numbers.getFont(),"0  ", &m_score.m_scoreRect.w, &m_score.m_scoreRect.h);
+
+  // render the SDL_Surface containing our text to a texture buffer
+  glGenTextures(1, &m_fboNumTexId);
+  glActiveTexture(GL_TEXTURE7);
+  glBindTexture(GL_TEXTURE_2D, m_fboNumTexId);
+  glTexImage2D(GL_TEXTURE_2D,
+               0,
+               GL_RGBA,
+               screenSurface->w,
+               screenSurface->h,
+               0,
+               GL_BGRA_EXT,
+               GL_UNSIGNED_BYTE,
+               screenSurface->pixels);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  ///---------------------------------------
+
+  // Free all the SDL_Surfaces that were created
+  SDL_FreeSurface(numberSurface);
+  SDL_FreeSurface(scoreSurface);
+  SDL_FreeSurface(screenSurface);
+  SDL_FreeSurface(maskSurface);
 
   // Create the frame buffer
   glGenFramebuffers(1, &m_fboId);
   glBindFramebuffer(GL_FRAMEBUFFER, m_fboId);
 
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fboGameOverTexId, 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fboLifeTexId, 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fboNumTexId, 0);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fboMaskTexId, 0);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fboTextTexId, 0);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_fboGameTexId, 0);
@@ -488,34 +736,34 @@ void Game::initFBO()
 //  shader->linkProgramObject(_name);
 //}
 
-void Game::initTexture(const GLuint& texUnit, GLuint &texId, const char *filename) {
-    // Set our active texture unit
-    glActiveTexture(GL_TEXTURE0 + texUnit);
+//void Game::initTexture(const GLuint& texUnit, GLuint &texId, const char *filename) {
+//    // Set our active texture unit
+//    glActiveTexture(GL_TEXTURE0 + texUnit);
 
-    // Load up the image using NGL routine
-    ngl::Image img(filename);
+//    // Load up the image using NGL routine
+//    ngl::Image img(filename);
 
-    // Create storage for our new texture
-    glGenTextures(1, &texId);
+//    // Create storage for our new texture
+//    glGenTextures(1, &texId);
 
-    // Bind the current texture
-    glBindTexture(GL_TEXTURE_2D, texId);
+//    // Bind the current texture
+//    glBindTexture(GL_TEXTURE_2D, texId);
 
-    // Transfer image data onto the GPU using the teximage2D call
-    glTexImage2D (
-                GL_TEXTURE_2D,    // The target (in this case, which side of the cube)
-                0,                // Level of mipmap to load
-                img.format(),     // Internal format (number of colour components)
-                img.width(),      // Width in pixels
-                img.height(),     // Height in pixels
-                0,                // Border
-                GL_RGBA,          // Format of the pixel data
-                GL_UNSIGNED_BYTE, // Data type of pixel data
-                img.getPixels()); // Pointer to image data in memory
+//    // Transfer image data onto the GPU using the teximage2D call
+//    glTexImage2D (
+//                GL_TEXTURE_2D,    // The target (in this case, which side of the cube)
+//                0,                // Level of mipmap to load
+//                img.format(),     // Internal format (number of colour components)
+//                img.width(),      // Width in pixels
+//                img.height(),     // Height in pixels
+//                0,                // Border
+//                GL_RGBA,          // Format of the pixel data
+//                GL_UNSIGNED_BYTE, // Data type of pixel data
+//                img.getPixels()); // Pointer to image data in memory
 
-    // Set up parameters for our texture
-    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-}
+//    // Set up parameters for our texture
+//    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+//    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+//    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+//}

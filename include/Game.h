@@ -14,9 +14,20 @@
 #include <list>
 #include <SDL.h>
 #include "Ship.h"
+#include "Text.h"
 #include "Projectile.h"
 #include "GameEnv.h"
 
+const static int SCORELENGTH = 5;
+
+struct Score
+{
+  unsigned int m_score;
+  int m_scoreArray[SCORELENGTH];
+  SDL_Rect m_scoreRect;
+};
+
+bool intToArray(int _integer, int _length, int _array[SCORELENGTH]);
 
 class Game
 {
@@ -77,11 +88,11 @@ class Game
 
     inline void changeState() {m_ship->changeState();}
 
-    unsigned int m_score;
+    Score         m_score;
 
-    unsigned int m_time;
+    unsigned int  m_time;
 
-    float m_lives;
+    float         m_lives;
 
   private :
     // initialize a shader program so that it can be used to draw
@@ -95,41 +106,55 @@ class Game
 
     void render_text(const char *text, float x, float y, float sx, float sy);
 
+    int getSpawnCycle(int initialPeriod, int randomImprecision);
+
     // Keep track of whether the FBO needs to be recreated
-    bool m_isFBODirty = true;
+    bool          m_isFBODirty = true;
 
     // the width and height of the window
-    int m_width, m_height;
-
-    // our camera
-    ngl::Camera *m_camera;
-
-    // the ship model
-    ngl::Obj *m_shipMesh;
-
-    // the projectile model
-    ngl::Obj *m_projectileMesh;
+    int           m_width,
+                  m_height;
 
     // the number of active projectiles
-    int m_activeProjectiles;
+    int           m_activeMissiles,
+                  m_activeObstacles,
+                  m_activeBonuses,
+                  m_activeProjectiles;
 
-    // the list of active rockets
-    std::list <Projectile> m_projectiles;
+    // our camera
+    ngl::Camera  *m_camera;
+
+    // the meshes for all the objects in the scene
+    ngl::Obj     *m_shipMesh,
+                 *m_missileMesh,
+                 *m_obstacleMesh,
+                 *m_bonusMesh;
+
+    // the list of active projectiles
+    std::list <Projectile *> m_projectiles;
 
     // the game environment
-    GameEnv *m_gameEnv;
+    GameEnv       *m_gameEnv;
 
     // the ship
-    Ship *m_ship;
+    Ship          *m_ship;
 
     // the ship movement bounds rectangle
-    SDL_Rect m_moveBounds;
+    SDL_Rect      m_moveBounds;
 
-    ngl::Vec2 m_textSurface;
+    ngl::Vec2     m_textSurface;
 
     // the IDs used for the frame buffer objects and their associated textures
-    GLuint m_fboId, m_fboGameTexId, m_fboGameDepthId, m_fboTextTexId, m_fboMaskTexId;
+    GLuint        m_fboId,
+                  m_fboGameTexId,
+                  m_fboGameDepthId,
+                  m_fboTextTexId,
+                  m_fboNumTexId,
+                  m_fboMaskTexId,
+                  m_fboLifeTexId,
+                  m_fboGameOverTexId;
 
+//    Text *m_text;
     //QFont *m_font = new QFont("Arial",16);
 
 };
