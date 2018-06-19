@@ -11,6 +11,8 @@ uniform sampler2D depthTex;
 uniform sampler2D textTex;
 uniform sampler2D maskTex;
 uniform sampler2D numTex;
+uniform sampler2D lifeTex;
+uniform sampler2D gameOverTex;
 
 // The depth at which we want to focus
 uniform float focalDepth = 0.93;
@@ -21,11 +23,14 @@ uniform float blurRadius = 0.03;
 // We pass the window size to the shader.
 uniform vec2 windowSize;
 
-// We pass the window size to the shader.
+// We pass the score information into the shader
 uniform int score[5];
 uniform int scoreLength;
 uniform vec2 scorePlacement;
 uniform vec2 numDimensions;
+
+// The current number of lives
+uniform float lives;
 
 /***************************************************************************************************
  * Gaussian Blur functions and constants
@@ -101,9 +106,9 @@ vec4 PoissonFilter(sampler2D tex, vec2 texpos, float sigma) {
 
 /// end of code  *
 
-vec4 ChromaticAbberationBlur(sampler2D tex, vec2 UVpos, float sigma, float offset)
+vec4 ChromaticAberrationBlur(sampler2D tex, vec2 UVpos, float sigma, float offset)
 {
-    // the three offsetted color channels to create the chromatic abberation effect
+    // the three offsetted color channels to create the chromatic Aberration effect
     float blurredR = PoissonFilter(tex, vec2(UVpos.x-offset,UVpos.y),sigma).r;
     float blurredG = PoissonFilter(tex, UVpos, sigma).g;
     float blurredB = PoissonFilter(tex, vec2(UVpos.x+offset,UVpos.y),sigma).b;
@@ -146,17 +151,17 @@ void main() {
     // Determine sigma, the blur radius of this pixel
     float sigma = abs(focalDepth - texture(depthTex, gamePos).x) * blurRadius;
 
-    // chromatic abberation offset
+    // chromatic Aberration offset
     // (weighted for depth, otherwise it looks like there's
     // two projectiles in the distance where there's only one)
     float gameCAOffset = 0.001*(pow(texture2D(depthTex, gamePos).r,3));
 
     // final color of the game viewport
-    vec4 gameColor = ChromaticAbberationBlur(gameTex, gamePos, sigma, gameCAOffset);
+    vec4 gameColor = ChromaticAberrationBlur(gameTex, gamePos, sigma, gameCAOffset);
     //--------------------------------------------------
 
     //----------------------Game UI---------------------
-    // the chromatic abberation offset for our in-game UI
+    // the chromatic Aberration offset for our in-game UI
     float flatCAOffset = 0.001;
 
     // because the origin on SDL_Surfaces is the top-left corner
@@ -167,15 +172,15 @@ void main() {
     // the coordinates of our text surface
     vec2 textPos = gl_FragCoord.xy / SDL_SurfaceSize;
 
-    vec4 textColor = ChromaticAbberationBlur(textTex, textPos, 0.001, flatCAOffset);
-    vec4 maskColor = ChromaticAbberationBlur(maskTex, textPos, 0.005, flatCAOffset);
+    vec4 textColor = ChromaticAberrationBlur(textTex, textPos, 0.001, flatCAOffset);
+    vec4 maskColor = ChromaticAberrationBlur(maskTex, textPos, 0.005, flatCAOffset);
 
     //vec4 numColor = vec4(vec3(texture2D(numTex, textPos).rgb),1);
 
     gameColor *= maskColor;
     vec4 outColor = gameColor+textColor;
 
-    vec4 numColor = ChromaticAbberationBlur(numTex, textPos, 0.001, flatCAOffset);
+    vec4 numColor = ChromaticAberrationBlur(numTex, textPos, 0.001, flatCAOffset);
 
     vec2 _scorePlacement = scorePlacement/windowSize;
     vec2 _numDimensions = numDimensions/windowSize;
@@ -190,7 +195,42 @@ void main() {
         {
             vec2 translation = textPos - vec2(numPlacement.x,(1-_numDimensions.y)+numPlacement.y);
             vec2 numPos = vec2(translation.x+_numDimensions.x*score[i],(translation.y)+2*numPlacement.y);
-            outColor = ChromaticAbberationBlur( numTex, vec2(numPos.x,numPos.y), 0.001, flatCAOffset );
+            outColor = ChromaticAberrationBlur( numTex, vec2(numPos.x,numPos.y), 0.001, flatCAOffset );
+        }
+    }
+
+    vec4 lifeColor = ChromaticAberrationBlur(lifeTex, textPos, 0.001, flatCAOffset);
+    for(int i; i<3; i++)
+    {
+        vec4 lifeRect;
+
+        lifeRect.x = 60/windowSize.x;
+        lifeRect.y = 40/windowSize.y;
+        lifeRect.z = 1.0f-1.0f/4.2f;
+        lifeRect.w = 0.22+(lifeRect.y+40.0f/windowSize.y)*i;
+        if(isInside(texPos, lifeRect.zw, lifeRect.xy))
+        {
+            if(lives>=i+1)
+            {
+                outColor += lifeColor;
+            }
+            else
+            {
+                outColor += lifeColor*clamp(lives-float(i),0.0f,3.0f);
+            }
+        }
+    }
+
+    if(lives<=0)
+    {
+        vec4 gameOverColor = ChromaticAberrationBlur(gameOverTex, textPos, 0.001, flatCAOffset);
+        if(gameOverColor.r+gameOverColor.g+gameOverColor.b!=0)
+        {
+            outColor = gameOverColor;
+        }
+        else
+        {
+            outColor *= 0.5;
         }
     }
     //--------------------------------------------------

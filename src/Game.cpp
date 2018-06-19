@@ -223,6 +223,12 @@ void Game::draw()
   glActiveTexture(GL_TEXTURE7);
   glBindTexture(GL_TEXTURE_2D, m_fboNumTexId);
 
+  glActiveTexture(GL_TEXTURE8);
+  glBindTexture(GL_TEXTURE_2D, m_fboLifeTexId);
+
+  glActiveTexture(GL_TEXTURE9);
+  glBindTexture(GL_TEXTURE_2D, m_fboGameOverTexId);
+
   // grab an instance of the shader manager
   ngl::ShaderLib *shader=ngl::ShaderLib::instance();
   // use the Game shader program for this draw
@@ -235,11 +241,14 @@ void Game::draw()
   glUniform1i(glGetUniformLocation(pid, "textTex"), 6);
   glUniform1i(glGetUniformLocation(pid, "maskTex"), 5);
   glUniform1i(glGetUniformLocation(pid, "numTex"), 7);
+  glUniform1i(glGetUniformLocation(pid, "lifeTex"), 8);
+  glUniform1i(glGetUniformLocation(pid, "gameOverTex"), 9);
   glUniform2f(glGetUniformLocation(pid, "windowSize"), m_width, m_height);
   glUniform2f(glGetUniformLocation(pid, "scorePlacement"), m_score.m_scoreRect.x, m_score.m_scoreRect.y);
   glUniform2f(glGetUniformLocation(pid, "numDimensions"), m_score.m_scoreRect.w, m_score.m_scoreRect.h);
   glUniform1i(glGetUniformLocation(pid, "scoreLength"), SCORELENGTH);
   glUniform1iv(glGetUniformLocation(pid, "score"), SCORELENGTH, m_score.m_scoreArray);
+  glUniform1f(glGetUniformLocation(pid, "lives"), m_lives);
 
   // set the MVP for the plane
   glm::mat4 MVP = glm::rotate(glm::mat4(1.0f), glm::pi<float>() * 0.5f, glm::vec3(1.0f,0.0f,0.0f));
@@ -344,6 +353,7 @@ void Game::update()
       // increment the number of active projectiles
       ++m_activeProjectiles;
     }
+
     ///---------------------------------------------
 
     ///-------Update Projectiles and Collision------
@@ -429,6 +439,11 @@ void Game::update()
       }
       // if it is not active, erase it from the list
       else {m_projectiles.erase(p++);}
+    }
+
+    if(m_lives>3)
+    {
+      m_lives = 3;
     }
 
     // update the size of the active projectiles
@@ -587,16 +602,16 @@ void Game::initFBO()
   for(int i; i<m_lives; i++)
   {
     SDL_Rect lifeRect;
-    lifeRect.w = 500;
-    lifeRect.h = 300;
-    lifeRect.x = m_width-m_width/5;
+    lifeRect.w = 50;
+    lifeRect.h = 30;
+    lifeRect.x = float(m_width)-float(m_width)/4.3f;
     // each position will be lower than the last
-    lifeRect.y = m_height/2+(lifeRect.h+50)*i;
+    lifeRect.y = m_height/2+(lifeRect.h+50)*i-lifeRect.h;
     // create the SDL_Surface for the life bar and fill it green
     SDL_Surface* lifeSurface = SDL_CreateRGBSurface(0, lifeRect.w, lifeRect.h, 32, 0,0,0,1);
     SDL_FillRect(lifeSurface,NULL,SDL_MapRGB(lifeSurface->format, 0, 255, 0));
     // blit it to the screenSurface
-    SDL_BlitSurface(lifeSurface, NULL, screenSurface, &gameViewport);
+    SDL_BlitSurface(lifeSurface, NULL, screenSurface, &lifeRect);
     // free the lifeSurface, since it was created locally
     SDL_FreeSurface(lifeSurface);
   }
@@ -620,17 +635,18 @@ void Game::initFBO()
   ///---------------------------------------
 
   ///-----------------Game Over-----------------
-  // fill our screen with a light grey (we will be blending with multiply later on)
-  SDL_FillRect(screenSurface,NULL,SDL_MapRGB(screenSurface->format, 200, 200, 200));
+  // fill our screen with black
+  SDL_FillRect(screenSurface,NULL,SDL_MapRGB(screenSurface->format, 0, 0, 0));
 
+  // set the game over text to a surface
   Button gameOverButton = Button("GAME OVER",200);
   SDL_Surface *gameOverSurface = gameOverButton.getSurface();
   gameOverButton.setPosition(m_width/2,m_height/2,true);
 
-
-
-  SDL_FillRect(maskSurface,NULL,SDL_MapRGB(maskSurface->format, 255, 255, 255));
-  SDL_BlitSurface(maskSurface, NULL, screenSurface, &gameViewport);
+  // blit it to the screenSurface
+  SDL_BlitSurface(gameOverSurface, NULL, screenSurface, &gameOverButton.m_borderRect);
+  // free the lifeSurface, since it was created locally
+  SDL_FreeSurface(gameOverSurface);
 
   // render the SDL_Surface containing our mask to a texture buffer
   glGenTextures(1, &m_fboGameOverTexId);
